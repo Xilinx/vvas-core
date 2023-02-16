@@ -1,0 +1,54 @@
+option('enable_ppe', type : 'integer', min : -1, max : 1, value : -1)
+option('tracker_use_simd', type : 'integer', min : -1, max : 1, value : -1)
+option('pci_platform', type : 'string', value : 'V70')
+option('vvas_core_utils', type : 'string', value : 'GLIB')
+
+option('scaler', type : 'feature', value : 'auto')
+option('decoder', type : 'feature', value : 'auto')
+option('overlay', type : 'feature', value : 'auto')
+option('metaaffixer', type : 'feature', value : 'auto')
+option('utils', type : 'feature', value : 'auto')
+option('tracker', type : 'feature', value : 'auto')
+option('dpuinfer', type : 'feature', value : 'auto')
+option('metaconvert', type : 'feature', value : 'auto')
+
+option('CLASSIFICATION', type: 'string', value: '1',
+       description: 'Enable disable CLASSIFICATION models')
+option('VEHICLECLASSIFICATION', type: 'string', value: '1',
+       description: 'Enable disable VEHICLECLASSIFICATION models')
+option('YOLOV2', type: 'string', value: '1',
+       description: 'Enable disable YOLOV2 models')
+option('YOLOV3', type: 'string', value: '1',
+       description: 'Enable disable YOLOV3 models')
+option('REFINEDET', type: 'string', value: '1',
+       description: 'Enable disable REFINEDET models')
+option('PLATEDETECT', type: 'string', value: '1',
+       description: 'Enable disable PLATEDETECT models')
+option('PLATENUM', type: 'string', value: '1',
+       description: 'Enable disable PLATENUM models')
+option('FACEDETECT', type: 'string', value: '1',
+       description: 'Enable disable FACEDETECT models')
+option('EFFICIENTDETD2', type: 'string', value: '1',
+       description: 'Enable disable EFFICIENTDETD2 models')
+option('BCC', type: 'string', value: '1',
+       description: 'Enable disable BCC models')
+option('SSD', type: 'string', value: '1',
+       description: 'Enable disable SSD models')
+option('TFSSD', type: 'string', value: '1',
+       description: 'Enable disable TFSSD models')
+option('ULTRAFAST', type: 'string', value: '1',
+       description: 'Enable disable ULTRAFAST models')
+option('ROADLINE', type: 'string', value: '1',
+       description: 'Enable disable ROADLINE models')
+option('FACELANDMARK', type: 'string', value: '1',
+       description: 'Enable disable FACELANDMARK models')
+option('FACEFEATURE', type: 'string', value: '1',
+       description: 'Enable disable FACEFEATURE models')
+option('POSEDETECT', type: 'string', value: '1',
+       description: 'Enable disable POSEDETECT models')
+option('REID', type: 'string', value: '1',
+       description: 'Enable disable REID models')
+option('SEGMENTATION', type: 'string', value: '1',
+       description: 'Enable disable SEGMENTATION models')
+option('RAWTENSOR', type: 'string', value: '1',
+       description: 'Enable disable RAWTENSOR models')

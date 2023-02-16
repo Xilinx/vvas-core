@@ -1,0 +1,21 @@
+{
+  "vvas-library-repo": "/opt/xilinx/vvas/lib/",
+  "inference-level":2,
+  "inference-max-queue":13,
+  "attach-ppe-outbuf": true,
+  "low-latency":false,
+  "kernel" : {
+    "library-name":"libvvas_xdpuinfer.so",
+    "config": {
+      "model-name" : "vehicle_make_resnet18_pt",
+      "model-class" : "VEHICLECLASSIFICATION",
+      "model-format" : "RGB",
+      "batch-size":13,
+      "model-path" : "/usr/share/vitis_ai_library/models/",
+      "run-time-model" : false,
+      "vitis-ai-preprocess" : false,
+      "performance-test" : false,
+      "debug-level" : 0
+    }
+  }
+}

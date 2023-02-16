@@ -1,0 +1,32 @@
+{
+  "yolov3-config-path":"/opt/xilinx/vvas/share/cascade_yolov3_3xresnet18/yolov3_voc_tf.json",
+  "resnet18-carmake-config-path":"/opt/xilinx/vvas/share/cascade_yolov3_3xresnet18/resnet18_vehicle_make.json",
+  "resnet18-cartype-config-path":"/opt/xilinx/vvas/share/cascade_yolov3_3xresnet18/resnet18_vehicle_type.json",
+  "resnet18-carcolor-config-path":"/opt/xilinx/vvas/share/cascade_yolov3_3xresnet18/resnet18_vehicle_color.json",
+  "metaconvert-config-path":"/opt/xilinx/vvas/share/cascade_yolov3_3xresnet18/metaconvert_config.json",
+  "xclbin-location":"/workspace/13PE/v70.xclbin",
+  "additional-decoder-buffers": 14,
+  "batch-timeout": 400,
+  "fps-display-interval": 5,
+  "repeat-count":1,
+  "sink-type":0,
+  "log-level":0,
+  "input-streams":[
+                    "/workspace/Videos/cars_1.264",
+                    "/workspace/Videos/cars_2.264",
+                    "/workspace/Videos/cars_3.264",
+                    "/workspace/Videos/cars_4.264",
+                    "/workspace/Videos/cars_5.264",
+                    "/workspace/Videos/cars_6.264",
+                    "/workspace/Videos/cars_7.264",
+                    "/workspace/Videos/cars_8.264",
+                    "/workspace/Videos/cars_9.264",
+                    "/workspace/Videos/cars_10.264",
+                    "/workspace/Videos/cars_11.264",
+                    "/workspace/Videos/cars_12.264",
+                    "/workspace/Videos/cars_13.264",
+                    "/workspace/Videos/cars_14.264",
+                    "/workspace/Videos/cars_15.264",
+                    "/workspace/Videos/cars_16.264"
+                 ]
+}

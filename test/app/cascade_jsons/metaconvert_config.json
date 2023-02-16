@@ -1,0 +1,38 @@
+{
+      "config": {
+        "font-size" : 0.5,
+        "font" : 0,
+        "display-level":2,
+        "thickness" : 1,
+        "mask-level" : 0,
+        "draw-above-bbox-flag" : true,
+        "y-offset" : 0,
+        "label-filter" : [ "class" ],
+        "classes" : [
+          {
+            "name" : "car",
+            "blue" : 183,
+            "green" : 255,
+            "red"  : 183
+          },
+          {
+            "name" : "person",
+            "blue" : 0,
+            "green" : 255,
+            "red"  : 0
+          },
+          {
+            "name" : "bus",
+            "blue" : 0,
+            "green" : 0,
+            "red"  : 255
+          },
+          {
+            "name" : "bicycle",
+            "blue" : 0,
+            "green" : 0,
+            "red"  : 255
+          }
+        ]
+      }
+}
