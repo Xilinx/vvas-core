@@ -28,12 +28,12 @@
 #include <cmath>
 #include <string>
 
-#define LOG_LEVEL			(LOG_LEVEL_INFO)
+#define LOG_LEVEL         (LOG_LEVEL_INFO)
 
-#define LOG_E(...)		(LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL,  __VA_ARGS__))
-#define LOG_W(...)		(LOG_MESSAGE(LOG_LEVEL_WARNING, LOG_LEVEL,  __VA_ARGS__))
-#define LOG_I(...)		(LOG_MESSAGE(LOG_LEVEL_INFO, LOG_LEVEL,  __VA_ARGS__))
-#define LOG_D(...)		(LOG_MESSAGE(LOG_LEVEL_DEBUG, LOG_LEVEL,  __VA_ARGS__))
+#define LOG_E(...)        (LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL,  __VA_ARGS__))
+#define LOG_W(...)        (LOG_MESSAGE(LOG_LEVEL_WARNING, LOG_LEVEL,  __VA_ARGS__))
+#define LOG_I(...)        (LOG_MESSAGE(LOG_LEVEL_INFO, LOG_LEVEL,  __VA_ARGS__))
+#define LOG_D(...)        (LOG_MESSAGE(LOG_LEVEL_DEBUG, LOG_LEVEL,  __VA_ARGS__))
 
 #define MEM_BANK_IDX 0
 
@@ -78,19 +78,16 @@ create_tracker_algo_config (VvasTrackerconfig * vvas_tconfig,
     tconfig->tracker_type = ALGO_MOSSE;
   else if (vvas_tconfig->tracker_type == TRACKER_ALGO_KCF)
     tconfig->tracker_type = ALGO_KCF;
-
   if (vvas_tconfig->search_scales == SEARCH_SCALE_ALL)
     tconfig->multiscale = 1;
   else if (vvas_tconfig->search_scales == SEARCH_SCALE_UP)
     tconfig->multiscale = 2;
   else if (vvas_tconfig->search_scales == SEARCH_SCALE_DOWN)
     tconfig->multiscale = 3;
-
   if (vvas_tconfig->obj_match_color == TRACKER_USE_RGB)
     tconfig->obj_match_color = USE_RGB;
   else if (vvas_tconfig->obj_match_color == TRACKER_USE_HSV)
     tconfig->obj_match_color = USE_HSV;
-
   tconfig->iou_use_color = vvas_tconfig->iou_use_color;
   tconfig->fet_length = vvas_tconfig->fet_length;
   tconfig->min_width = vvas_tconfig->min_width;
@@ -236,12 +233,12 @@ update_each_node_with_results (const VvasTreeNode * node, void *kpriv_ptr)
       prediction->bbox.height = round (trackers_data->trk_objs.objs[i].height);
 
       if (trackers_data->trk_objs.objs[i].status == 1) {
-        std::string str = std::to_string (trackers_data->trk_objs.objs[i].trk_id);
+        std::string str =
+            std::to_string (trackers_data->trk_objs.objs[i].trk_id);
         prediction->obj_track_label = g_strdup (str.c_str ());
         flag = false;
-      }
-      else if (trackers_data->trk_objs.objs[i].status == 0 &&
-               !trackers_data->tconfig.skip_inactive_objs) {
+      } else if (trackers_data->trk_objs.objs[i].status == 0 &&
+          !trackers_data->tconfig.skip_inactive_objs) {
         std::string str = std::to_string (-1);
         prediction->obj_track_label = g_strdup (str.c_str ());
         flag = false;
@@ -310,6 +307,8 @@ vvas_tracker_process (VvasTracker * vvas_tracker_hndl,
   img.channels = 1;
   img.img_width = map_info.width;
   img.img_height = map_info.height;
+  img.data[0] = NULL;
+  img.data[1] = NULL;
 
   /* If algorithm of type ALGO_IOU and metadata is NULL return as
      error since ALGO_IOU requires every frame detection data */
@@ -320,8 +319,8 @@ vvas_tracker_process (VvasTracker * vvas_tracker_hndl,
 
   /* If algo type is IOU and no color based matching is set then no need
      of accessing image data */
-  if (*infer_meta != NULL && !tracker_priv->tconfig.iou_use_color) {
-    img.data = NULL;
+  if (tracker_priv->tconfig.tracker_type == ALGO_IOU
+      && !tracker_priv->tconfig.iou_use_color) {
     buf_copy_flag = 0;
   } else {
     /* Check if in_mem of type vvas_memory. If vvas_memory data
@@ -343,7 +342,7 @@ vvas_tracker_process (VvasTracker * vvas_tracker_hndl,
 
       /* map memory to user space to get video frame information */
       vret =
-          vvas_video_frame_map (tracker_data->img_data, VVAS_DATA_MAP_READ,
+          vvas_video_frame_map (tracker_data->img_data, VVAS_DATA_MAP_WRITE,
           &mem_info);
       if (VVAS_IS_ERROR (vret)) {
         LOG_E ("failed to map memory\n");
@@ -352,28 +351,36 @@ vvas_tracker_process (VvasTracker * vvas_tracker_hndl,
 
       /* Copy Intensity plane of NV12 frame data */
       memcpy (mem_info.planes[0].data, map_info.planes[0].data,
-          map_info.planes[0].size);
+          mem_info.planes[0].size);
+      img.data[0] = (unsigned char *) mem_info.planes[0].data;
 
       /* If metadata available copy croma values also as they required
          for object matching */
       if (*infer_meta != NULL) {
         memcpy (mem_info.planes[1].data, map_info.planes[1].data,
-            map_info.planes[1].size);
-        img.channels = 1;
+            mem_info.planes[1].size);
+        img.channels = 2;
+        img.data[1] = (unsigned char *) mem_info.planes[1].data;
       }
 
-      img.data = (unsigned char *) mem_info.planes[0].data;
-    } else {
-      /* Check for data is from continuous memory */
-      if ((map_info.planes[0].data + map_info.planes[0].size) !=
-          (map_info.planes[1].data)) {
-        LOG_E ("Tracker requires image data continuous memory");
-        return VVAS_RET_ERROR;
+      vret = vvas_video_frame_unmap (tracker_data->img_data, &mem_info);
+      if (VVAS_IS_ERROR (vret)) {
+        LOG_E ("failed to unmap memory of img_data\n");
+        return vret;
       }
-      img.data = (unsigned char *) map_info.planes[0].data;
+
+      vret =
+          vvas_video_frame_map (tracker_data->img_data, VVAS_DATA_MAP_READ,
+          &mem_info);
+      if (VVAS_IS_ERROR (vret)) {
+        LOG_E ("failed to map memory\n");
+        return vret;
+      }
+    } else {
+      img.data[0] = (unsigned char *) map_info.planes[0].data;
+      img.data[1] = (unsigned char *) map_info.planes[1].data;
     }
   }
-
   /* Check to call tracker in detection mode or tracking mode based on
      metadata availability */
   if (*infer_meta != NULL) {

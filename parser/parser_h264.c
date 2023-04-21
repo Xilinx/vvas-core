@@ -315,9 +315,16 @@ static int32_t parse_h264_sps (VvasParserPriv *self, VvasParserBuffer* in_buffer
   {
     parsedata->fr_num = time_scale;
     parsedata->fr_den = num_units_in_tick * 2;
-    unsigned long temp = gcd (parsedata->fr_num, parsedata->fr_den);
-    parsedata->fr_num /= temp;
-    parsedata->fr_den /= temp;
+    if (!parsedata->fr_den) {
+      LOG_MESSAGE (LOG_LEVEL_ERROR, LOG_LEVEL_ERROR, "Invalid framerate");
+      free (buffer.data);
+      return P_ERROR;
+    }
+    if (parsedata->fr_num) {
+      unsigned long temp = gcd (parsedata->fr_num, parsedata->fr_den);
+      parsedata->fr_num /= temp;
+      parsedata->fr_den /= temp;
+    }
   }
 
   sps.valid = 1;
@@ -622,7 +629,7 @@ parse_h264_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
       return VVAS_RET_ERROR;
     }
 
-    if (self->last_ret == P_MOREDATA && !is_eos) {
+    if (self->last_ret == P_MOREDATA && !is_eos && in_buffer->data) {
       self->last_nalu_offset = 0; /* partial inbuf is starting with NALU header */
       /* we already having one NALU header and looking for next */
       has_nalu_header = 1;
@@ -676,6 +683,9 @@ parse_h264_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
         out_buffer->data = self->partial_outbuf.data;
         out_buffer->size = self->partial_outbuf.size;
       }
+
+      if (self->partial_inbuf.data)
+        free (self->partial_inbuf.data);
 
       memset (&self->partial_inbuf, 0x0, sizeof (VvasParserBuffer));
       memset (&self->partial_outbuf, 0x0, sizeof (VvasParserBuffer));
@@ -874,6 +884,9 @@ parse_h264_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
           out_buffer->size = self->partial_outbuf.size;
           out_buffer->offset = 0;
 
+          if (self->partial_inbuf.data)
+            free (self->partial_inbuf.data);
+
           memset (&self->partial_outbuf, 0x0, sizeof (VvasParserBuffer));
           memset (&self->partial_inbuf, 0x0, sizeof (VvasParserBuffer));
 
@@ -941,6 +954,9 @@ parse_h264_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
           out_buffer->data = self->partial_outbuf.data;
           out_buffer->size = self->partial_outbuf.size;
           out_buffer->offset = 0;
+
+          if (self->partial_inbuf.data)
+            free (self->partial_inbuf.data);
 
           memset (&self->partial_inbuf, 0x0, sizeof (VvasParserBuffer));
           memset (&self->partial_outbuf, 0x0, sizeof (VvasParserBuffer));

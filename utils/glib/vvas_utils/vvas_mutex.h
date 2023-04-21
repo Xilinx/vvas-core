@@ -20,9 +20,10 @@
 
 
 /** 
- *DOC: VVAS Mutex API's
- *Contains API's for handling synchronization.
+ * DOC: VVAS Mutex APIs
+ * This file contains APIs for handling synchronization.
  */
+
 #ifndef __VVAS_MUTEX_H__
 #define __VVAS_MUTEX_H__
 

@@ -17,7 +17,8 @@
  */
 
 /**
- * DOC: Contains structures and methods related VVAS memory
+ * DOC: VVAS Memory APIs
+ * This file contains structures and methods related VVAS memory.
  *
  */
 
@@ -54,7 +55,7 @@ typedef struct {
 typedef void VvasMemory;
 
 /**
- * vvas_memory_alloc () - Allocates memory of specified size by @size and arguments sent to this API
+ * vvas_memory_alloc () - Allocates memory specified by @size and other arguments passed to this API
  * @vvas_ctx: Address of VvasContext handle created using @vvas_context_create()
  * @mem_type: Type of the memory need to be allocated
  * @mem_flags: Flags of type &enum VvasAllocationFlags
@@ -63,8 +64,8 @@ typedef void VvasMemory;
  * @ret: Address to store return value. In case of error, @ret is useful in understanding the root cause
  *
  * Return:
- * On Success returns VvasMemory handle
- * On Failure returns NULL
+ * * On Success, returns VvasMemory handle,
+ * * On Failure, returns NULL
  */
 VvasMemory* vvas_memory_alloc (VvasContext *vvas_ctx, VvasAllocationType mem_type, VvasAllocationFlags mem_flags, uint8_t mbank_idx, size_t size, VvasReturnType *ret);
 
@@ -77,16 +78,16 @@ VvasMemory* vvas_memory_alloc (VvasContext *vvas_ctx, VvasAllocationType mem_typ
  * @user_data: User defined data
  * @ret: Address to store return value. Upon case of error, @ret is useful in understanding the root cause
  *
- * When application needs to send its data pointer VVAS core APIs, this API is useful to populate data pointer in VvasMemory handle.
+ * When application allocates memory and needs to send it to VVAS core APIs, this API is useful to wrap this memory pointer into VvasMemory handle.
  *
  * Return:
- * On Success returns VvasMemory handle
- * On Failure returns NULL
+ * * On Success, returns VvasMemory handle,
+ * * On Failure, returns NULL
  */
 VvasMemory* vvas_memory_alloc_from_data (VvasContext *vvas_ctx, uint8_t *data, size_t size, VvasMemoryDataFreeCB free_cb, void *user_data, VvasReturnType *ret);
 
 /**
- * vvas_memory_free() - Frees the memory allocated during @vvas_memory_alloc() API
+ * vvas_memory_free() - Frees the memory allocated by @vvas_memory_alloc() API
  * @vvas_mem: Address of &struct VvasMemory object
  *
  * Return:  None
@@ -94,7 +95,7 @@ VvasMemory* vvas_memory_alloc_from_data (VvasContext *vvas_ctx, uint8_t *data, s
 void vvas_memory_free (VvasMemory* vvas_mem);
 
 /**
- * vvas_memory_map() - Maps @vvas_mem to user space using @flags. Based on &VvasMemory->sync_flags, data will synchronized between host and device.
+ * vvas_memory_map() - Maps @vvas_mem to user space using @flags. Based on &VvasMemory->sync_flags, data will be synchronized between host and device.
  * @vvas_mem: Address of &struct VvasMemory object
  * @flags: Flags used to map @vvas_mem
  * @info: Structure which gets populated after mapping is successful
@@ -113,7 +114,7 @@ VvasReturnType vvas_memory_map (VvasMemory* vvas_mem, VvasDataMapFlags flags, Vv
 VvasReturnType vvas_memory_unmap (VvasMemory* vvas_mem, VvasMemoryMapInfo *info);
 
 /**
- * vvas_memory_set_metadata() - Sets metadata on &struct VvasMemory object
+ * vvas_memory_set_metadata() - Sets &VvasMetadata metadata on &struct VvasMemory object
  * @vvas_mem: Address of &struct VvasMemory object
  * @meta_data: Address of &struct VvasMetadata to be set on @vvas_mem
  *
@@ -122,10 +123,10 @@ VvasReturnType vvas_memory_unmap (VvasMemory* vvas_mem, VvasMemoryMapInfo *info)
 void vvas_memory_set_metadata (VvasMemory* vvas_mem, VvasMetadata *meta_data);
 
 /**
- * vvas_memory_get_metadata() - Gets metadata from &struct VvasMemory object
+ * vvas_memory_get_metadata() - Gets &VvasMetadata metadata from &struct VvasMemory object
  * @vvas_mem: Address of &struct VvasMemory object
  * @meta_data: Address of &struct VvasMetadata to be populated by this API
- *
+ *.
  * Return: None
  */
 void vvas_memory_get_metadata (VvasMemory* vvas_mem, VvasMetadata *meta_data);

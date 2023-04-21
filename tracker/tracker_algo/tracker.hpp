@@ -77,6 +77,8 @@
 
 #define OCC_THR 0.4
 
+#define MAX_CHANNELS 3
+
 typedef enum
 {
   ALGO_IOU,
@@ -143,7 +145,7 @@ typedef struct {
   short channels;
   short img_width;
   short img_height;
-  unsigned char *data;
+  unsigned char *data[MAX_CHANNELS];
 } Mat_img;
 
 typedef struct {

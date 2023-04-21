@@ -234,7 +234,7 @@ vvas_fill_planes (VvasVideoInfo * info, VvasVideoFrame * vvas_frame)
  * @param[out] ret - Address to store return value. Upon case of error, \p ret is useful in understanding the root cause
  * @return  On Success returns VvasVideoFrame handle\n
  *                On Failure returns NULL
- * @brief Allocates memory cored on VvasVideoInfo structure
+ * @brief Allocates memory based on VvasVideoInfo structure
  */
 VvasVideoFrame *
 vvas_video_frame_alloc (VvasContext * vvas_ctx, VvasAllocationType alloc_type,
@@ -273,6 +273,9 @@ vvas_video_frame_alloc (VvasContext * vvas_ctx, VvasAllocationType alloc_type,
   priv->alignment.padding_right = vinfo->alignment.padding_right;
   priv->alignment.padding_top = vinfo->alignment.padding_top;
   priv->alignment.padding_bottom = vinfo->alignment.padding_bottom;
+  for (pidx = 0; pidx < priv->num_planes; pidx++) {
+    priv->alignment.stride_align[pidx] = vinfo->alignment.stride_align[pidx];
+  }
 
   if (alloc_type == VVAS_ALLOC_TYPE_CMA) {      /* allocate XRT memory */
     if (!vvas_ctx->dev_handle) {
@@ -306,10 +309,11 @@ vvas_video_frame_alloc (VvasContext * vvas_ctx, VvasAllocationType alloc_type,
     }
   } else if (alloc_type == VVAS_ALLOC_TYPE_NON_CMA) {   /* allocate SW memory */
     for (pidx = 0; pidx < priv->num_planes; pidx++) {
-      priv->planes[pidx].data = (uint8_t *) malloc (priv->size);
+      priv->planes[pidx].data = (uint8_t *) malloc (priv->planes[pidx].size);
       if (priv->planes[pidx].data == NULL) {
         LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level,
-            "failed to allocate non-cma memory of size %zu", priv->size);
+            "failed to allocate non-cma memory of size %zu",
+            priv->planes[pidx].size);
         vret = VVAS_RET_ALLOC_ERROR;
         goto error;
       }
@@ -326,6 +330,8 @@ vvas_video_frame_alloc (VvasContext * vvas_ctx, VvasAllocationType alloc_type,
   return (VvasVideoFrame *) priv;
 
 error:
+  if (priv)
+    free (priv);
   if (ret)
     *ret = vret;
   return NULL;
@@ -414,6 +420,8 @@ vvas_video_frame_alloc_from_data (VvasContext * vvas_ctx,
   return (VvasVideoFrame *) priv;
 
 error:
+  if (priv)
+    free (priv);
   if (ret)
     *ret = vret;
   return NULL;
@@ -485,6 +493,7 @@ vvas_video_frame_map (VvasVideoFrame * vvas_vframe, VvasDataMapFlags map_flags,
     info->planes[pidx].size = priv->planes[pidx].size;
     info->planes[pidx].stride = priv->planes[pidx].stride;
     info->planes[pidx].elevation = priv->planes[pidx].elevation;
+    info->alignment.stride_align[pidx] = priv->alignment.stride_align[pidx];
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->ctx->log_level,
         "mapped video frame plane[%u] : data = %p, size = %zu", pidx,
         info->planes[pidx].data, info->planes[pidx].size);
@@ -582,7 +591,7 @@ vvas_video_frame_set_metadata (VvasVideoFrame * vvas_mem,
   VvasVideoFramePriv *priv = (VvasVideoFramePriv *) vvas_mem;
 
   if (!priv || !meta_data) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -608,7 +617,7 @@ vvas_video_frame_get_metadata (VvasVideoFrame * vvas_mem,
   VvasVideoFramePriv *priv = (VvasVideoFramePriv *) vvas_mem;
 
   if (!priv || !meta_data) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -635,7 +644,7 @@ vvas_video_frame_get_videoinfo (VvasVideoFrame * vvas_mem,
   VvasVideoFramePriv *priv = (VvasVideoFramePriv *) vvas_mem;
 
   if (!priv || !vinfo) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -649,6 +658,8 @@ vvas_video_frame_get_videoinfo (VvasVideoFrame * vvas_mem,
   vinfo->n_planes = priv->num_planes;
   for (idx = 0; idx < vinfo->n_planes; idx++) {
     vinfo->stride[idx] = priv->planes[idx].stride;
+    vinfo->elevation[idx] = priv->planes[idx].elevation;
+    vinfo->alignment.stride_align[idx] = priv->alignment.stride_align[idx];
   }
   return;
 }
@@ -667,6 +678,7 @@ vvas_video_frame_sync_data (VvasVideoFrame * vvas_mem,
     VvasDataSyncFlags sync_flag)
 {
   VvasVideoFramePriv *priv = (VvasVideoFramePriv *) vvas_mem;
+  int32_t iret;
 
   if (!priv || (VVAS_ALLOC_TYPE_NON_CMA == priv->mem_info.alloc_type)) {
     LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
@@ -685,7 +697,11 @@ vvas_video_frame_sync_data (VvasVideoFrame * vvas_mem,
     sync_dir =
         (sync_flag & VVAS_DATA_SYNC_TO_DEVICE) ? VVAS_BO_SYNC_BO_TO_DEVICE :
         VVAS_BO_SYNC_BO_FROM_DEVICE;
-    vvas_xrt_sync_bo (priv->boh, sync_dir, priv->size, 0);
+    iret = vvas_xrt_sync_bo (priv->boh, sync_dir, priv->size, 0);
+    if (iret != 0) {
+      LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "syncbo failed -%d, reason : %s", iret, strerror (errno));
+      return;
+    }
     vvas_video_frame_unset_sync_flag (&priv->mem_info, sync_flag);
   }
 
@@ -846,14 +862,14 @@ vvas_video_frame_get_device_index (VvasVideoFrame * vvas_mem)
   }
 
   if (!priv->ctx && priv->mem_info.alloc_type == VVAS_ALLOC_TYPE_CMA) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid context");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid context");
     return -1;
   }
 
   if (priv->ctx) {
     dev_idx = priv->ctx->dev_idx;
   } else {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level,
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL,
         "Non CMA memory will not have device index");
     dev_idx = -1;
   }
@@ -878,14 +894,14 @@ vvas_video_frame_get_bank_index (VvasVideoFrame * vvas_mem)
   }
 
   if (!priv->ctx && priv->mem_info.alloc_type == VVAS_ALLOC_TYPE_CMA) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid context");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid context");
     return -1;
   }
 
   if (priv->ctx) {
     mbank_idx = priv->mbank_idx;
   } else {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level,
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL,
         "Non CMA memory will not have memory bank index");
     mbank_idx = -1;
   }

@@ -16,7 +16,8 @@
  */
 
 /**
- *  DOC: Contains structures and methods related to VVAS inference.
+ * DOC: VVAS Post-processing APIs
+ * This file contains structures and methods related to VVAS inference.
  */
 
 #include <vvas_core/vvas_log.h>

@@ -221,7 +221,8 @@ mem_pool_get_free_mem (mem_pool * pool)
   }
 
   if (!free_mem) {
-    LOG_MESSAGE (LOG_LEVEL_WARNING, g_log_level, "No free memory left in the pool");
+    LOG_MESSAGE (LOG_LEVEL_WARNING, g_log_level,
+        "No free memory left in the pool");
   }
 
   return free_mem;
@@ -422,8 +423,8 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
     /* 3 samples per word or U32, so number of words to be processed is width/3 rounded off */
     U32 num_words = (in_width + 2) / 3;
     U16 *in_buf_uv_16 = in_buf_16 + (in_width * in_height);
-    U32 *out_buf = (U32 *) mem_pool_get_free_mem (&fmt->pool);
-    U32 *out_buf_uv = out_buf + (((in_width + 2) / 3) * in_height);
+    U32 *out_buf = (U32 *) out_array[0];
+    U32 *out_buf_uv = (U32 *) out_array[1];
     U32 v_uv = 0;
 
     for (U32 v = 0; v < in_height; v++) {
@@ -468,16 +469,15 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
       if (!(v & 1))
         v_uv++;
     }
-    *out_array = out_buf;
-    mem_pool_release_mem (&fmt->pool, in_buf);
   } else if (fmt->out_pix_fmt == VD_PIX_FMT_NV12_Y_UV8) {
-    U8 *out_buf_y = *out_array;
-    U8 *out_buf_uv = out_buf_y + (stride * in_height);
+    U8 *out_buf_y = out_array[0];
+    U8 *out_buf_uv = out_array[1];
     U8 *in_buf_y = in_buf;
     U8 *in_buf_uv = in_buf_y + (in_width * in_height);
     /* Let's copy straightaway if stride is same as width */
     if (in_width == stride) {
-      memcpy (out_buf_y, in_buf, ((in_width * in_height * 1.5)));
+      memcpy (out_buf_y, in_buf, ((in_width * in_height)));
+      memcpy (out_buf_uv, in_buf_uv, (((in_width * in_height) / 2)));
     } else {
       /* Otherwise we have to copy line by line */
       for (U32 v = 0; v < in_height; v++) {
@@ -493,16 +493,18 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
       }
     }
   } else if (fmt->out_pix_fmt == VD_PIX_FMT_I420_Y_U_V8) {
-    U8 *out_buf_y = *out_array;
-    U8 *out_buf_u = out_buf_y + (stride * in_height);
-    U8 *out_buf_v = out_buf_u + ((stride / 2) * (in_height / 2));
+    U8 *out_buf_y = out_array[0];
+    U8 *out_buf_u = out_array[1];
+    U8 *out_buf_v = out_array[2];
     U8 *in_buf_y = in_buf;
     U8 *in_buf_u = in_buf_y + (in_width * in_height);
     U8 *in_buf_v = in_buf_u + ((in_width / 2) * (in_height / 2));
 
     /* Let's copy straightaway if stride is same as width */
     if (in_width == stride) {
-      memcpy (out_buf_y, in_buf, ((in_width * in_height * 1.5)));
+      memcpy (out_buf_y, in_buf, (in_width * in_height));
+      memcpy (out_buf_u, in_buf_u, ((in_width * in_height) / 4));
+      memcpy (out_buf_v, in_buf_v, ((in_width * in_height) / 4));
     } else {
       /* Otherwise we have to copy line by line */
       for (U32 v = 0; v < in_height; v++) {
@@ -514,7 +516,7 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
           memcpy (out_buf_u, in_buf_u, (in_width / 2));
           in_buf_u += (in_width / 2);
           out_buf_u += (stride / 2);
-          /* Copy a V linke */
+          /* Copy a V line */
           memcpy (out_buf_v, in_buf_v, (in_width / 2));
           in_buf_v += (in_width / 2);
           out_buf_v += (stride / 2);
@@ -522,8 +524,8 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
       }
     }
   } else if (fmt->out_pix_fmt == VD_PIX_FMT_RGB_RGB8 ||
-             fmt->out_pix_fmt == VD_PIX_FMT_BGR_BGR8) {
-    U8 *out_buf = *out_array;
+      fmt->out_pix_fmt == VD_PIX_FMT_BGR_BGR8) {
+    U8 *out_buf = out_array[0];
     U8 *in_buf_temp = in_buf;
     /* Let's copy straightaway if stride is same as width */
     if ((in_width * 3) == stride) {
@@ -537,7 +539,7 @@ pixel_array_to_bytes (void *in_buf, U32 in_width, U32 in_height, U32 stride,
       }
     }
   } else if (fmt->out_pix_fmt == VD_PIX_FMT_GRAY_GRAY8) {
-    U8 *out_buf = *out_array;
+    U8 *out_buf = out_array[0];
     U8 *in_buf_temp = in_buf;
     /* Let's copy straightaway if stride is same as width */
     if (in_width == stride) {
@@ -577,7 +579,8 @@ vertical_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
   U16 *vs_out_buf = NULL;
 
   if (in_height == out_height) {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level, "Input and Output heights are same, no need to scale");
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level,
+        "Input and Output heights are same, no need to scale");
     *out_buf = in_buf;
     return;
   }
@@ -598,9 +601,9 @@ vertical_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
           /* Get indexes of input source buffers to be reffered at sample level */
           int src_byte_v = byte_v - 6 + i;
           int src_byte_h = byte_h + k;
-          sum[k] += coeff[coeff_idx][i] *
-              get_array_value_u16 (in_buf_16, src_byte_v, src_byte_h,
-              in_width, in_height, VD_MAX_COMPONENTS);
+          sum[k] += (I32) (coeff[coeff_idx][i]) *
+              (I32) (get_array_value_u16 (in_buf_16, src_byte_v, src_byte_h,
+                  in_width, in_height, VD_MAX_COMPONENTS));
         }
       }
       for (int k = 0; k < VD_MAX_COMPONENTS; k++) {
@@ -617,32 +620,37 @@ vertical_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
 }
 
 static void
-populate_v8_array_for_scaling (U8 *in_buf, U32 width, U32 height, U8 pix_array[12][VD_MAX_COMPONENTS], U32 pix_idx_h, U32 pix_idx_v, U8 taps)
+populate_v8_array_for_scaling (U8 * in_buf, U32 width, U32 height,
+    U8 pix_array[12][VD_MAX_COMPONENTS], U32 pix_idx_h, U32 pix_idx_v, U8 taps)
 {
   I32 start_v, start_h;
-  U8 last_value[VD_MAX_COMPONENTS];
+  U8 last_value[VD_MAX_COMPONENTS] = { 0 };
 
-  start_v = pix_idx_v - (taps/2-1);
+  start_v = pix_idx_v - (taps / 2 - 1);
   start_h = pix_idx_h;
   if (start_v < 0) {
-    for (I32 v = (start_v+taps-1); v >= start_v ; v--) {
-      for(U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
+    for (I32 v = (start_v + taps - 1); v >= start_v; v--) {
+      for (U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
         if (v >= 0) {
-          pix_array[v-start_v][c] = in_buf[(v * width * VD_MAX_COMPONENTS)+(start_h * VD_MAX_COMPONENTS)+c];
-          last_value[c] = pix_array[v-start_v][c];
+          pix_array[v - start_v][c] =
+              in_buf[(v * width * VD_MAX_COMPONENTS) +
+              (start_h * VD_MAX_COMPONENTS) + c];
+          last_value[c] = pix_array[v - start_v][c];
         } else {
-          pix_array[v-start_v][c] = last_value[c];
+          pix_array[v - start_v][c] = last_value[c];
         }
       }
-	  }
+    }
   } else {
-    for (I32 v = start_v; v < (start_v+taps); v++) {
-      for(U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
+    for (I32 v = start_v; v < (start_v + taps); v++) {
+      for (U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
         if (v < height) {
-          pix_array[v-start_v][c] = in_buf[(v * width * VD_MAX_COMPONENTS)+(start_h * VD_MAX_COMPONENTS)+c];
-          last_value[c] = pix_array[v-start_v][c];
+          pix_array[v - start_v][c] =
+              in_buf[(v * width * VD_MAX_COMPONENTS) +
+              (start_h * VD_MAX_COMPONENTS) + c];
+          last_value[c] = pix_array[v - start_v][c];
         } else {
-          pix_array[v-start_v][c] = last_value[c];
+          pix_array[v - start_v][c] = last_value[c];
         }
       }
     }
@@ -662,7 +670,8 @@ vertical_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
   U8 *vs_out_buf = NULL;
 
   if (in_height == out_height) {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level, "Input and Output heights are same, no need to scale");
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level,
+        "Input and Output heights are same, no need to scale");
     *out_buf = in_buf;
     return;
   }
@@ -675,11 +684,12 @@ vertical_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
       src_pix_idx_v = v * scaling_factor;
       /* Find out the coefficient precision index value to be used */
       coeff_idx = ((v * scaling_factor) - src_pix_idx_v) * 64;
-      sum[0] = (1<<12)>>1;
-      sum[1] = (1<<12)>>1;
-      sum[2] = (1<<12)>>1;
+      sum[0] = (1 << 12) >> 1;
+      sum[1] = (1 << 12) >> 1;
+      sum[2] = (1 << 12) >> 1;
       U8 pix_array[12][VD_MAX_COMPONENTS];
-      populate_v8_array_for_scaling(in_buf_8, in_width, in_height, pix_array, src_pix_idx_h, src_pix_idx_v, 12);
+      populate_v8_array_for_scaling (in_buf_8, in_width, in_height, pix_array,
+          src_pix_idx_h, src_pix_idx_v, 12);
 
       for (I32 i = 0; i < 12; i++) {    /* Run the loop for all 12 tap values. TODO: Tap size hardcoded */
         for (I32 k = 0; k < VD_MAX_COMPONENTS; k++) {
@@ -689,8 +699,8 @@ vertical_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_height,
 
       for (I32 k = 0; k < VD_MAX_COMPONENTS; k++) {
         /* Normalize and add to the output buffer value */
-        norm = sum[k] >> 12;  /*  Coefficient Precision Shift */
-        norm = CLAMP(norm, 0, (1 << 8) - 1);  /* Clamp the values between 0 and max of 8 bit values */
+        norm = sum[k] >> 12;    /*  Coefficient Precision Shift */
+        norm = CLAMP (norm, 0, (1 << 8) - 1);   /* Clamp the values between 0 and max of 8 bit values */
         vs_out_buf[(v * in_width * VD_MAX_COMPONENTS) + h * VD_MAX_COMPONENTS +
             k] = norm;
         sum[k] = 0;
@@ -713,7 +723,8 @@ horizontal_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
   long long sum[VD_MAX_COMPONENTS] = { 0 };
 
   if (in_width == out_width) {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level, "Input and Output widths are same, no need to scale");
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level,
+        "Input and Output widths are same, no need to scale");
     *out_buf = in_buf;
     return;
   }
@@ -737,8 +748,9 @@ horizontal_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
           int src_byte_h =
               byte_h - (6 * VD_MAX_COMPONENTS) + (i * VD_MAX_COMPONENTS) + k;
           sum[k] +=
-              coeff[coeff_idx][i] * get_array_value_u16 (in_buf_16, src_byte_v,
-              src_byte_h, in_width, in_height, VD_MAX_COMPONENTS);
+              (I32) (coeff[coeff_idx][i]) *
+              (I32) (get_array_value_u16 (in_buf_16, src_byte_v, src_byte_h,
+                  in_width, in_height, VD_MAX_COMPONENTS));
         }
       }
       for (int k = 0; k < VD_MAX_COMPONENTS; k++) {
@@ -756,39 +768,44 @@ horizontal_scale_u16 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
 
 
 static void
-populate_h8_array_for_scaling (U8 *in_buf, U32 width, U32 height, U8 pix_array[12][VD_MAX_COMPONENTS], U32 pix_idx_h, U32 pix_idx_v, U8 taps)
+populate_h8_array_for_scaling (U8 * in_buf, U32 width, U32 height,
+    U8 pix_array[12][VD_MAX_COMPONENTS], U32 pix_idx_h, U32 pix_idx_v, U8 taps)
 {
   I32 start_v, start_h;
-  U8 last_value[VD_MAX_COMPONENTS];
+  U8 last_value[VD_MAX_COMPONENTS] = { 0 };
 
   /* Locate the start end of the pixel on which filter has to be applied */
   start_v = pix_idx_v;
-  start_h = pix_idx_h - (taps/2-1);
+  start_h = pix_idx_h - (taps / 2 - 1);
 
   /* If we are going out of the boundary to start with, start taking values from other end
    * of the pixels, so that we can repeat the last boundary value to extend the filter window.
    */
   if (start_h < 0) {
-    for (I32 h = (start_h+taps-1); h >= start_h ; h--) {
-      for(U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
+    for (I32 h = (start_h + taps - 1); h >= start_h; h--) {
+      for (U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
         if (h >= 0) {
-          pix_array[h-start_h][c] = in_buf[(start_v * (width * VD_MAX_COMPONENTS))+(h * VD_MAX_COMPONENTS)+c];
+          pix_array[h - start_h][c] =
+              in_buf[(start_v * (width * VD_MAX_COMPONENTS)) +
+              (h * VD_MAX_COMPONENTS) + c];
           /* Keep updating the current pixel values into last value,
            * will use it when go out of boundary */
-          last_value[c] = pix_array[h-start_h][c];
+          last_value[c] = pix_array[h - start_h][c];
         } else {
-          pix_array[h-start_h][c] = last_value[c];
+          pix_array[h - start_h][c] = last_value[c];
         }
       }
     }
   } else {
-    for (I32 h = start_h; h < (start_h+taps); h++) {
-      for(U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
+    for (I32 h = start_h; h < (start_h + taps); h++) {
+      for (U8 c = 0; c < VD_MAX_COMPONENTS; c++) {
         if (h < width) {
-          pix_array[h-start_h][c] = in_buf[(start_v * (width * VD_MAX_COMPONENTS))+(h * VD_MAX_COMPONENTS)+c];
-          last_value[c] = pix_array[h-start_h][c];
+          pix_array[h - start_h][c] =
+              in_buf[(start_v * (width * VD_MAX_COMPONENTS)) +
+              (h * VD_MAX_COMPONENTS) + c];
+          last_value[c] = pix_array[h - start_h][c];
         } else {
-          pix_array[h-start_h][c] = last_value[c];
+          pix_array[h - start_h][c] = last_value[c];
         }
       }
     }
@@ -808,7 +825,8 @@ horizontal_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
   I32 sum[VD_MAX_COMPONENTS] = { 0 }, norm = 0;
 
   if (in_width == out_width) {
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level, "Input and Output widths are same, no need to scale");
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level,
+        "Input and Output widths are same, no need to scale");
     *out_buf = in_buf;
     return;
   }
@@ -821,12 +839,13 @@ horizontal_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
       src_pix_idx_v = v;
       /* Find out the coefficient precision index value to be used */
       coeff_idx = ((h * scaling_factor) - src_pix_idx_h) * 64;
-      sum[0] = (1<<12)>>1;
-      sum[1] = (1<<12)>>1;
-      sum[2] = (1<<12)>>1;
+      sum[0] = (1 << 12) >> 1;
+      sum[1] = (1 << 12) >> 1;
+      sum[2] = (1 << 12) >> 1;
       U8 pix_array[12][VD_MAX_COMPONENTS];
 
-      populate_h8_array_for_scaling(in_buf_8, in_width, in_height, pix_array, src_pix_idx_h, src_pix_idx_v, 12);
+      populate_h8_array_for_scaling (in_buf_8, in_width, in_height, pix_array,
+          src_pix_idx_h, src_pix_idx_v, 12);
 
       for (I32 i = 0; i < 12; i++) {    /* Run the loop for all 12 tap values. TODO: Tap size hardcoded */
         for (I32 k = 0; k < VD_MAX_COMPONENTS; k++) {
@@ -837,7 +856,7 @@ horizontal_scale_u8 (void *in_buf, U32 in_width, U32 in_height, U32 out_width,
       for (int k = 0; k < VD_MAX_COMPONENTS; k++) {
         /* Normalize and add to the output buffer value */
         norm = sum[k] >> 12;
-        norm = CLAMP(norm, 0, (1 << 8) - 1);
+        norm = CLAMP (norm, 0, (1 << 8) - 1);
         hs_out_buf[(v * out_width * VD_MAX_COMPONENTS) + h * VD_MAX_COMPONENTS +
             k] = norm;
         sum[k] = 0;
@@ -968,11 +987,13 @@ horizontal_downsample_core_u8 (U8 * in_buf, U32 in_width, U32 in_height,
     for (int h = 0; h < in_width; h += 2) {
       /* Apply filter (1/4, 1/2, 1/4) to scale down */
       if (h == 0) {
-        out_buf[v * out_width + (h / 2) ] =
-            (in_buf[(v * in_width) + h] + 2 * in_buf[(v * in_width) + h] + in_buf[(v * in_width) + (h + 1)] + 2) / 4;
+        out_buf[v * out_width + (h / 2)] =
+            (in_buf[(v * in_width) + h] + 2 * in_buf[(v * in_width) + h] +
+            in_buf[(v * in_width) + (h + 1)] + 2) / 4;
       } else {
         out_buf[v * out_width + (h / 2)] =
-            (in_buf[(v * in_width) + (h - 1)] + 2 * in_buf[(v * in_width) + h ] + in_buf[(v * in_width) + (h + 1)] + 2) / 4;
+            (in_buf[(v * in_width) + (h - 1)] + 2 * in_buf[(v * in_width) + h] +
+            in_buf[(v * in_width) + (h + 1)] + 2) / 4;
       }
     }
   }
@@ -1024,14 +1045,14 @@ horizontal_upsample_core_u8 (U8 * in_buf, U32 in_width, U32 in_height,
       if (h & 1) {
         /* We have only one neighbour at the end, so just copy the same value */
         if (h == (out_width - 1)) {
-          out_buf[(v * out_width) + h] = in_buf[(v * in_width) + (h - 1)/2];
+          out_buf[(v * out_width) + h] = in_buf[(v * in_width) + (h - 1) / 2];
         } else {
           out_buf[(v * out_width) + h] =
-              (in_buf[(v * in_width) + (h - 1)/2] + in_buf[(v * in_width) +
-                  (((h - 1)/2)+1)] + 1) / 2;
+              (in_buf[(v * in_width) + (h - 1) / 2] + in_buf[(v * in_width) +
+                  (((h - 1) / 2) + 1)] + 1) / 2;
         }
       } else {
-        out_buf[(v * out_width) + h] = in_buf[(v * in_width) + h/2];
+        out_buf[(v * out_width) + h] = in_buf[(v * in_width) + h / 2];
       }
     }
   }
@@ -1061,10 +1082,12 @@ vertical_downsample_core_u8 (U8 * in_buf, U32 in_width, U32 in_height,
       /* Apply filter (1/4, 1/2, 1/4) to scale down */
       if (v == 0) {
         out_buf[((v / 2) * in_width) + h] =
-            (in_buf[((v / 2) * in_width) + h] + 2 * in_buf[(v * in_width) + h] + in_buf[((v + 1) * in_width) + h] + 2) / 4;
+            (in_buf[((v / 2) * in_width) + h] + 2 * in_buf[(v * in_width) + h] +
+            in_buf[((v + 1) * in_width) + h] + 2) / 4;
       } else {
         out_buf[((v / 2) * in_width) + h] =
-            (in_buf[((v - 1) * in_width) + h] + 2 * in_buf[(v * in_width) + h] + in_buf[((v + 1) * in_width) + h] + 2) / 4;
+            (in_buf[((v - 1) * in_width) + h] + 2 * in_buf[(v * in_width) + h] +
+            in_buf[((v + 1) * in_width) + h] + 2) / 4;
       }
     }
   }
@@ -1110,14 +1133,14 @@ vertical_upsample_core_u8 (U8 * in_buf, U32 in_width, U32 in_height,
     for (int v = 0; v < out_height; v++) {
       if (v & 1) {
         if (v == (out_height - 1)) {
-          out_buf[v * out_width + h] = in_buf[(((v - 1)/2) * in_width) + h];
+          out_buf[v * out_width + h] = in_buf[(((v - 1) / 2) * in_width) + h];
         } else {
           out_buf[v * out_width + h] =
-              (in_buf[(((v - 1)/2) * in_width) + h] +
-                      in_buf[(((v - 1)/2 + 1) * in_width) + h] + 1) / 2;
+              (in_buf[(((v - 1) / 2) * in_width) + h] +
+              in_buf[(((v - 1) / 2 + 1) * in_width) + h] + 1) / 2;
         }
       } else {
-        out_buf[v * out_width + h] =  in_buf[(v / 2) * in_width + h];
+        out_buf[v * out_width + h] = in_buf[(v / 2) * in_width + h];
       }
     }
   }
@@ -1126,7 +1149,7 @@ vertical_upsample_core_u8 (U8 * in_buf, U32 in_width, U32 in_height,
 void
 vertical_chroma_resample_u16 (void *in_buf, U32 in_width, U32 in_height,
     bool passthru, video_format_desc * fmt, void **out_buf,
-	MULTI_SCALER_DESC_STRUCT * desc)
+    MULTI_SCALER_DESC_STRUCT * desc)
 {
   U16 *in_buf_16 = (U16 *) in_buf;
   U16 *temp_buf = NULL, *temp_buf_u = NULL, *temp_buf_v = NULL;
@@ -1234,7 +1257,7 @@ vertical_chroma_resample_u16 (void *in_buf, U32 in_width, U32 in_height,
 void
 vertical_chroma_resample_u8 (void *in_buf, U32 in_width, U32 in_height,
     bool passthru, video_format_desc * fmt, void **out_buf,
-	MULTI_SCALER_DESC_STRUCT * desc)
+    MULTI_SCALER_DESC_STRUCT * desc)
 {
   U8 *in_buf_8 = (U8 *) in_buf;
   U8 *temp_buf = NULL, *temp_buf_u = NULL, *temp_buf_v = NULL;
@@ -1760,17 +1783,21 @@ csc_u8 (void *in_buf, U32 width, U32 height, bool passthru,
 }
 
 static void
-convert_format (void* in_buf, U32 in_width, U32 in_height, video_format_desc *fmt, void **out_buf)
+convert_format (void *in_buf, U32 in_width, U32 in_height,
+    video_format_desc * fmt, void **out_buf)
 {
 
-  if ((fmt->in_pix_fmt == VD_PIX_FMT_RGB_RGB8 && fmt->out_pix_fmt == VD_PIX_FMT_BGR_BGR8) ||
-      (fmt->in_pix_fmt == VD_PIX_FMT_BGR_BGR8 && fmt->out_pix_fmt == VD_PIX_FMT_RGB_RGB8)) {
-    U8 *temp_in_buf = (U8 *)in_buf;
+  if ((fmt->in_pix_fmt == VD_PIX_FMT_RGB_RGB8
+          && fmt->out_pix_fmt == VD_PIX_FMT_BGR_BGR8)
+      || (fmt->in_pix_fmt == VD_PIX_FMT_BGR_BGR8
+          && fmt->out_pix_fmt == VD_PIX_FMT_RGB_RGB8)) {
+    U8 *temp_in_buf = (U8 *) in_buf;
     U8 temp_value;
     for (U32 v = 0; v < in_height; v++) {
       for (U32 h = 0; h < in_width; h++) {
         temp_value = temp_in_buf[v * (in_width * 3) + h * 3];
-        temp_in_buf[v * (in_width * 3) + h * 3] = temp_in_buf[v * (in_width * 3) + h * 3 + 2];
+        temp_in_buf[v * (in_width * 3) + h * 3] =
+            temp_in_buf[v * (in_width * 3) + h * 3 + 2];
         temp_in_buf[v * (in_width * 3) + h * 3 + 2] = temp_value;
       }
     }
@@ -1781,8 +1808,8 @@ convert_format (void* in_buf, U32 in_width, U32 in_height, video_format_desc *fm
 }
 
 int
-v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool need_preprocess,
-                   VvasLogLevel log_level)
+v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start,
+    bool need_preprocess, VvasLogLevel log_level)
 {
   U32 in_width, in_height, out_width, out_height;
   U32 out_stride = 0;
@@ -1812,7 +1839,10 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
   g_log_level = log_level;
 
   while (num_outputs) {
-    U8 *out_buf_temp = (U8 *) desc->msc_dstImgBuf0;
+    U8 *out_buf_temp[3];
+    out_buf_temp[0] = (U8 *) desc->msc_dstImgBuf0;
+    out_buf_temp[1] = (U8 *) desc->msc_dstImgBuf1;
+    out_buf_temp[2] = (U8 *) desc->msc_dstImgBuf2;
 
     in_width = desc->msc_widthIn;
     in_height = desc->msc_heightIn;
@@ -1827,7 +1857,8 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
       return -1;
     }
 
-    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level, "In Pix format : %s Out Pix format : %s",
+    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level,
+        "In Pix format : %s Out Pix format : %s",
         format_enum_to_str (vd_fmt_dsc.in_pix_fmt),
         format_enum_to_str (vd_fmt_dsc.out_pix_fmt));
 
@@ -1858,7 +1889,8 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
         && vd_fmt_dsc.out_cs != VD_CS_RGB) || (vd_fmt_dsc.in_cs != VD_CS_RGB
         && vd_fmt_dsc.out_cs == VD_CS_RGB) ? false : true;
 
-    if ((vd_fmt_dsc.in_pix_fmt == vd_fmt_dsc.out_pix_fmt) && (in_width == out_width)
+    if ((vd_fmt_dsc.in_pix_fmt == vd_fmt_dsc.out_pix_fmt)
+        && (in_width == out_width)
         && (in_height == out_height)) {
       passthru_vcr_up = true;
       passthru_hcr_up = true;
@@ -1872,26 +1904,26 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
     /* Create memory pool */
     U16 byte_per_comp = (vd_fmt_dsc.bits_per_sample + 7) / 8;
     U32 max_frame_size = MAX (in_width, out_stride) * MAX (in_height,
-       out_height) * VD_MAX_COMPONENTS * byte_per_comp;
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level, "Creating pool with each buffer size : %d\n",
-        max_frame_size);
+        out_height) * VD_MAX_COMPONENTS * byte_per_comp;
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, g_log_level,
+        "Creating pool with each buffer size : %d\n", max_frame_size);
     mem_pool_create (&vd_fmt_dsc.pool, max_frame_size, 2);
 
     /* Calculate input file size */
-    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level, "Input width : %d Input height : %d Stride : %d",
-        in_width, in_height, desc->msc_strideIn);
-    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level, "Output width : %d Output height : %d", out_width,
-        out_height);
+    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level,
+        "Input width : %d Input height : %d Stride : %d", in_width, in_height,
+        desc->msc_strideIn);
+    LOG_MESSAGE (LOG_LEVEL_INFO, g_log_level,
+        "Output width : %d Output height : %d", out_width, out_height);
 
     /* Allocate memory for input buffer */
     in_buf = mem_pool_get_free_mem (&vd_fmt_dsc.pool);
 
-    if (vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_NV12_Y_UV8 ||
-        vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_I420_Y_U_V8) {
+    if (vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_NV12_Y_UV8) {
       U8 *src_buf = (U8 *) desc->msc_srcImgBuf0;
       U8 *src_buf_uv = (U8 *) desc->msc_srcImgBuf1;
       U8 *in_buf_cpy = in_buf;
-      U8 *in_buf_uv_cpy = (U8 *)in_buf + (in_width * in_height);
+      U8 *in_buf_uv_cpy = (U8 *) in_buf + (in_width * in_height);
       for (U32 v = 0; v < in_height; v++) {
         memcpy (in_buf_cpy, src_buf, in_width);
         in_buf_cpy += in_width;
@@ -1902,8 +1934,28 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
           src_buf_uv += desc->msc_strideIn;
         }
       }
+    } else if (vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_I420_Y_U_V8) {
+      U8 *src_buf = (U8 *) desc->msc_srcImgBuf0;
+      U8 *src_buf_u = (U8 *) desc->msc_srcImgBuf1;
+      U8 *src_buf_v = (U8 *) desc->msc_srcImgBuf2;
+      U8 *in_buf_cpy = in_buf;
+      U8 *in_buf_cpu = (U8 *) in_buf + (in_width * in_height);
+      U8 *in_buf_cpv = in_buf_cpu + (in_width / 2 * in_height / 2);
+      for (U32 v = 0; v < in_height; v++) {
+        memcpy (in_buf_cpy, src_buf, in_width);
+        in_buf_cpy += in_width;
+        src_buf += desc->msc_strideIn;
+        if (!(v & 1)) {
+          memcpy (in_buf_cpu, src_buf_u, in_width / 2);
+          in_buf_cpu += in_width / 2;
+          src_buf_u += desc->msc_strideIn / 2;
+          memcpy (in_buf_cpv, src_buf_v, in_width / 2);
+          in_buf_cpv += in_width / 2;
+          src_buf_v += desc->msc_strideIn / 2;
+        }
+      }
     } else if (vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_RGB_RGB8 ||
-              vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_BGR_BGR8) {
+        vd_fmt_dsc.in_pix_fmt == VD_PIX_FMT_BGR_BGR8) {
       U8 *src_buf = (U8 *) desc->msc_srcImgBuf0;
       U8 *in_buf_cpy = in_buf;
       for (U32 v = 0; v < in_height; v++) {
@@ -1923,14 +1975,15 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
       U32 *src_buf = (U32 *) desc->msc_srcImgBuf0;
       U32 *src_buf_uv = (U32 *) desc->msc_srcImgBuf1;
       U32 *in_buf_cpy = in_buf;
-      U32 *in_buf_uv_cpy = (U32 *)((U8 *)in_buf + (((in_width + 2)/3) * in_height * 4));
+      U32 *in_buf_uv_cpy =
+          (U32 *) ((U8 *) in_buf + (((in_width + 2) / 3) * in_height * 4));
       for (U32 v = 0; v < in_height; v++) {
-        memcpy (in_buf_cpy, (void *)src_buf, (((in_width+2)/3)*4));
-        in_buf_cpy += ((in_width+2)/3);
+        memcpy (in_buf_cpy, (void *) src_buf, (((in_width + 2) / 3) * 4));
+        in_buf_cpy += ((in_width + 2) / 3);
         src_buf += desc->msc_strideIn;
         if (!(v & 1)) {
-          memcpy (in_buf_uv_cpy, src_buf_uv, (((in_width+2)/3)*4));
-          in_buf_uv_cpy += ((in_width+2)/3);
+          memcpy (in_buf_uv_cpy, src_buf_uv, (((in_width + 2) / 3) * 4));
+          in_buf_uv_cpy += ((in_width + 2) / 3);
           src_buf_uv += desc->msc_strideIn;
         }
       }
@@ -1959,10 +2012,12 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
 
     /* Scale the height alone */
     vd_fmt_dsc.vertical_scale_fn (scale_input_buf, in_width, in_height,
-    	out_height, (void **) &v_scale_out, (I16 (*)[12])desc->msc_blkmm_vfltCoeff, &vd_fmt_dsc);
+        out_height, (void **) &v_scale_out,
+        (I16 (*)[12]) desc->msc_blkmm_vfltCoeff, &vd_fmt_dsc);
     /* Scale the width alone */
     vd_fmt_dsc.horizontal_scale_fn (v_scale_out, in_width, out_height,
-    	out_width, (void **) &h_scale_out, (I16 (*)[12])desc->msc_blkmm_hfltCoeff, &vd_fmt_dsc);
+        out_width, (void **) &h_scale_out,
+        (I16 (*)[12]) desc->msc_blkmm_hfltCoeff, &vd_fmt_dsc);
 
     /* Lets convert color space here */
     vd_fmt_dsc.csc_fn (h_scale_out, out_width, out_height, passthru_csc,
@@ -1978,7 +2033,7 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
     vd_fmt_dsc.vc_resample_fn (out_buf1, out_width, out_height,
         passthru_vcr_down, &vd_fmt_dsc, (void **) &out_buf2, desc);
 
-    convert_format(out_buf2, out_width, out_height, &vd_fmt_dsc, &format_out);
+    convert_format (out_buf2, out_width, out_height, &vd_fmt_dsc, &format_out);
 
 #ifdef ENABLE_PPE_SUPPORT
     vd_fmt_dsc.alpha[0] = desc->msc_alpha_0;
@@ -1987,57 +2042,94 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
     vd_fmt_dsc.beta[0] = desc->msc_beta_0;
     vd_fmt_dsc.beta[1] = desc->msc_beta_1;
     vd_fmt_dsc.beta[2] = desc->msc_beta_2;
-    preprocess (format_out, out_width, out_height, passthru_preproc, &vd_fmt_dsc,
-        (U8 **) & pre_proc_out);
+    preprocess (format_out, out_width, out_height, passthru_preproc,
+        &vd_fmt_dsc, (U8 **) & pre_proc_out);
 #else
     pre_proc_out = format_out;
 #endif
-    pixel_array_to_bytes (pre_proc_out, out_width, out_height, out_stride, &vd_fmt_dsc,
-        (void **)&out_buf_temp);
+    pixel_array_to_bytes (pre_proc_out, out_width, out_height, out_stride,
+        &vd_fmt_dsc, (void **) out_buf_temp);
 
 #ifdef DUMP_OUTPUT
     if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_NV12_Y_UV10) {
       int hc_fd_f = 0;
       sprintf (out_filename, "output_NV1210LE.nv12");
-      hc_fd_f = open (out_filename, O_WRONLY | O_CREAT, 0777);
-      ret = write (hc_fd_f, out_buf_temp, ((out_width + 2) / 3 * out_height * 1.5 * 4));
+      hc_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret =
+          write (hc_fd_f, out_buf_temp[0],
+          ((out_width + 2) / 3 * out_height * 4));
       if (ret == -1) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level, "Write failed with errno : %d", errno);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
+      }
+      ret =
+          write (hc_fd_f, out_buf_temp[1],
+          ((out_width + 2) / 3 * out_height * 4) / 2);
+      if (ret == -1) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
       }
       close (hc_fd_f);
     }
 
-    if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_NV12_Y_UV8 ||
-        vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_I420_Y_U_V8) {
-      sprintf (out_filename, "output_%d_%d.yuv", out_width, out_height);
-      out_fd_f = open (out_filename, O_WRONLY | O_CREAT, 0777);
-      ret = write (out_fd_f, out_buf_temp, (out_width * out_height * 1.5));
+    if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_NV12_Y_UV8) {
+      sprintf (out_filename, "output_NV12_%d_%d.yuv", out_width, out_height);
+      out_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret = write (out_fd_f, out_buf_temp[0], (out_width * out_height));
       if (ret == -1) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level, "Write failed with errno : %d", errno);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
+      }
+      ret = write (out_fd_f, out_buf_temp[1], (out_width * out_height) / 2);
+      if (ret == -1) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
+      }
+      close (out_fd_f);
+    } else if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_I420_Y_U_V8) {
+      sprintf (out_filename, "output_I420_%d_%d.yuv", out_width, out_height);
+      out_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret = write (out_fd_f, out_buf_temp[0], (out_width * out_height));
+      if (ret == -1) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
+      }
+      ret = write (out_fd_f, out_buf_temp[1], (out_width * out_height) / 4);
+      if (ret == -1) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
+      }
+      ret = write (out_fd_f, out_buf_temp[2], (out_width * out_height) / 4);
+      if (ret == -1) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
       }
       close (out_fd_f);
     } else if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_RGB_RGB8) {
       sprintf (out_filename, "output_RGB_%d_%d.rgb", out_width, out_height);
-      out_fd_f = open (out_filename, O_WRONLY | O_CREAT, 0777);
-      ret = write (out_fd_f, out_buf_temp, (out_width * out_height * 3));
+      out_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret = write (out_fd_f, out_buf_temp[0], (out_width * out_height * 3));
       if (ret == -1) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level, "Write failed with errno : %d", errno);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
       }
       close (out_fd_f);
     } else if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_BGR_BGR8) {
       sprintf (out_filename, "output_BGR_%d_%d.rgb", out_width, out_height);
-      out_fd_f = open (out_filename, O_WRONLY | O_CREAT, 0777);
-      ret = write (out_fd_f, out_buf_temp, (out_width * out_height * 3));
+      out_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret = write (out_fd_f, out_buf_temp[0], (out_width * out_height * 3));
       if (ret == -1) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level, "Write failed with errno : %d", errno);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
       }
       close (out_fd_f);
     } else if (vd_fmt_dsc.out_pix_fmt == VD_PIX_FMT_GRAY_GRAY8) {
       sprintf (out_filename, "output_GRAY8_%d_%d.gray", out_width, out_height);
-      out_fd_f = open (out_filename, O_WRONLY | O_CREAT, 0777);
-      ret = write (out_fd_f, out_buf_temp, (out_width * out_height));
+      out_fd_f = open (out_filename, O_WRONLY | O_CREAT | O_APPEND, 0777);
+      ret = write (out_fd_f, out_buf_temp[0], (out_width * out_height));
       if (ret == -1) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level, "Write failed with errno : %d", errno);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, g_log_level,
+            "Write failed with errno : %d", errno);
       }
       close (out_fd_f);
     }
@@ -2045,7 +2137,7 @@ v_multi_scaler_sw (U32 num_outs, MULTI_SCALER_DESC_STRUCT * desc_start, bool nee
 
     mem_pool_destroy (&vd_fmt_dsc.pool);
     num_outputs--;
-    desc = (MULTI_SCALER_DESC_STRUCT *)desc->msc_nxtaddr;
+    desc = (MULTI_SCALER_DESC_STRUCT *) desc->msc_nxtaddr;
   }
   return 0;
 }

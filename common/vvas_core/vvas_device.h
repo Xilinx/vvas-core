@@ -114,94 +114,88 @@ Please follow below format specifiers for kernel arguments for "format" argument
 
 Ex : For passing 3 arguments of types int, unsigned int and a pointer,
      then the format specifier string would be "iup"
-	 
-	 If you want to skip the middler argument in the above case, then
-	 the format specifier string would be "isp"
+If you want to skip the middler argument in the above case, then
+the format specifier string would be "isp"
 ==========================================================================
 */
 
-  int32_t
-      vvas_xrt_exec_buf (vvasDeviceHandle dev_handle,
-      vvasKernelHandle kern_handle, vvasRunHandle * run_handle,
-      const char *format, va_list args);
+int32_t vvas_xrt_exec_buf (vvasDeviceHandle dev_handle,
+    vvasKernelHandle kern_handle, vvasRunHandle * run_handle,
+    const char *format, va_list args);
 
-  int32_t
-      vvas_xrt_exec_wait (vvasDeviceHandle dev_handle, vvasRunHandle run_handle,
-      int32_t timeout);
+int32_t vvas_xrt_exec_wait (vvasDeviceHandle dev_handle,
+    vvasRunHandle run_handle, int32_t timeout);
 
-  void vvas_xrt_free_run_handle (vvasRunHandle run_handle);
+void vvas_xrt_free_run_handle (vvasRunHandle run_handle);
 
 /* BO Related APIs */
-  uint64_t vvas_xrt_get_bo_phy_addres (vvasBOHandle bo);
+uint64_t vvas_xrt_get_bo_phy_addres (vvasBOHandle bo);
 
-  vvasBOHandle vvas_xrt_import_bo (vvasDeviceHandle dev_handle, int32_t fd);
+vvasBOHandle vvas_xrt_import_bo (vvasDeviceHandle dev_handle, int32_t fd);
 
-  int32_t vvas_xrt_export_bo (vvasBOHandle bo);
+int32_t vvas_xrt_export_bo (vvasBOHandle bo);
 
-    vvasBOHandle
-      vvas_xrt_alloc_bo (vvasDeviceHandle dev_handle, size_t size,
-      vvas_bo_flags flags, uint32_t mem_bank);
+vvasBOHandle vvas_xrt_alloc_bo (vvasDeviceHandle dev_handle, size_t size,
+    vvas_bo_flags flags, uint32_t mem_bank);
 
-    vvasBOHandle
-      vvas_xrt_create_sub_bo (vvasBOHandle parent, size_t size, size_t offset);
+vvasBOHandle vvas_xrt_create_sub_bo (vvasBOHandle parent, size_t size,
+    size_t offset);
 
-  void vvas_xrt_free_bo (vvasBOHandle bo);
+void vvas_xrt_free_bo (vvasBOHandle bo);
 
-  int vvas_xrt_unmap_bo (vvasBOHandle bo, void *addr);
+int vvas_xrt_unmap_bo (vvasBOHandle bo, void *addr);
 
-  void *vvas_xrt_map_bo (vvasBOHandle bo, bool write);
+void *vvas_xrt_map_bo (vvasBOHandle bo, bool write);
 
-  void vvas_xrt_close_device (vvasDeviceHandle dev_handle);
+void vvas_xrt_close_device (vvasDeviceHandle dev_handle);
 
 /* Device APIs */
-  int32_t vvas_xrt_close_context (vvasKernelHandle kern_handle);
+int32_t vvas_xrt_close_context (vvasKernelHandle kern_handle);
 
-  int32_t vvas_xrt_sync_bo (vvasBOHandle bo,
-      vvas_bo_sync_direction dir, size_t size, size_t offset);
+int32_t vvas_xrt_sync_bo (vvasBOHandle bo,
+    vvas_bo_sync_direction dir, size_t size, size_t offset);
 
-  int32_t vvas_xrt_write_bo (vvasBOHandle bo,
-      const void *src, size_t size, size_t seek);
+int32_t vvas_xrt_write_bo (vvasBOHandle bo,
+    const void *src, size_t size, size_t seek);
 
-  int32_t vvas_xrt_read_bo (vvasBOHandle bo, void *dst, size_t size,
-      size_t skip);
+int32_t vvas_xrt_read_bo (vvasBOHandle bo, void *dst, size_t size, size_t skip);
 
-    int32_t
-      vvas_xrt_open_context (vvasDeviceHandle handle, uuid_t xclbinId,
-      vvasKernelHandle * kernelHandle, const char *kernel_name, bool shared);
+int32_t vvas_xrt_open_context (vvasDeviceHandle handle, uuid_t xclbinId,
+    vvasKernelHandle * kernelHandle, const char *kernel_name, bool shared);
 
-  int32_t vvas_xrt_open_device (int32_t dev_idx, vvasDeviceHandle * xcl_handle);
+int32_t vvas_xrt_open_device (int32_t dev_idx, vvasDeviceHandle * xcl_handle);
 
-  void vvas_xrt_write_reg (vvasKernelHandle kern_handle,
-      uint32_t offset, uint32_t data);
+void vvas_xrt_write_reg (vvasKernelHandle kern_handle, uint32_t offset,
+    uint32_t data);
 
-  void vvas_xrt_read_reg (vvasKernelHandle kern_handle,
-      uint32_t offset, uint32_t * data);
+void vvas_xrt_read_reg (vvasKernelHandle kern_handle, uint32_t offset,
+    uint32_t * data);
 
-  int vvas_xrt_alloc_xrt_buffer (vvasDeviceHandle dev_handle,
-      unsigned int size, vvas_bo_flags bo_flags,
-      unsigned int mem_bank, xrt_buffer * buffer);
+int vvas_xrt_alloc_xrt_buffer (vvasDeviceHandle dev_handle,
+    unsigned int size, vvas_bo_flags bo_flags,
+    unsigned int mem_bank, xrt_buffer * buffer);
 
-  void vvas_xrt_free_xrt_buffer (xrt_buffer * buffer);
+void vvas_xrt_free_xrt_buffer (xrt_buffer * buffer);
 
-  int vvas_xrt_download_xclbin (const char *bit,
-      vvasDeviceHandle handle, uuid_t * xclbinId);
-  int vvas_xrt_get_xclbin_uuid (vvasDeviceHandle handle, uuid_t * xclbinId);
+int vvas_xrt_download_xclbin (const char *bit,
+    vvasDeviceHandle handle, uuid_t * xclbinId);
+int vvas_xrt_get_xclbin_uuid (vvasDeviceHandle handle, uuid_t * xclbinId);
 
 #ifdef XLNX_U30_PLATFORM
-  int vvas_xrt_send_softkernel_command (vvasKernelHandle kern_handle,
-      xrt_buffer * sk_ert_buf, unsigned int *payload, unsigned int num_idx,
-      unsigned int cu_mask, int timeout);
-  int vvas_softkernel_xrt_open_device (int32_t dev_idx, xclDeviceHandle xcl_dev_hdl, vvasDeviceHandle *xcl_handle);
-  void vvas_free_ert_xcl_xrt_buffer(xclDeviceHandle xcl_dev_handle, xrt_buffer *buffer);
+int vvas_xrt_send_softkernel_command (vvasKernelHandle kern_handle,
+    xrt_buffer * sk_ert_buf, unsigned int *payload, unsigned int num_idx,
+    unsigned int cu_mask, int timeout);
+int vvas_softkernel_xrt_open_device (int32_t dev_idx, xclDeviceHandle xcl_dev_hdl, vvasDeviceHandle *xcl_handle);
+void vvas_free_ert_xcl_xrt_buffer(xclDeviceHandle xcl_dev_handle, xrt_buffer *buffer);
 #else
-  int vvas_xrt_send_softkernel_command (vvasDeviceHandle dev_handle,
-      vvasKernelHandle kern_handle, xrt_buffer *sk_ert_buf,
-      unsigned int *payload, unsigned int num_idx, int timeout);
+int vvas_xrt_send_softkernel_command (vvasDeviceHandle dev_handle,
+    vvasKernelHandle kern_handle, xrt_buffer *sk_ert_buf,
+    unsigned int *payload, unsigned int num_idx, int timeout);
 #endif
 
 #ifdef XLNX_PCIe_PLATFORM
-  size_t vvas_xrt_get_num_compute_units (const char *xclbin_filename);
-  size_t vvas_xrt_get_num_kernels (const char *xclbin_filename);
+size_t vvas_xrt_get_num_compute_units (const char *xclbin_filename);
+size_t vvas_xrt_get_num_kernels (const char *xclbin_filename);
 #endif
 #ifdef __cplusplus
 }

@@ -56,6 +56,7 @@ vvas_context_create (int32_t dev_idx, char * xclbin_loc, VvasLogLevel log_level,
       LOG_MESSAGE (LOG_LEVEL_ERROR, log_level, "failed to open device with index %d", dev_idx);
       if (vret)
         *vret = VVAS_RET_ERROR;
+      free (ctx);
       return NULL;
     }
 
@@ -64,6 +65,9 @@ vvas_context_create (int32_t dev_idx, char * xclbin_loc, VvasLogLevel log_level,
       LOG_MESSAGE (LOG_LEVEL_ERROR, log_level, "Failed to download xclbin");
       if (vret)
         *vret = VVAS_RET_ERROR;
+
+      vvas_xrt_close_device (ctx->dev_handle);
+      free (ctx);
       return NULL;
     }
     /* Make a copy of xclbin path into VVAS context */
@@ -93,7 +97,7 @@ VvasReturnType
 vvas_context_destroy (VvasContext* vvas_ctx)
 {
   if (!vvas_ctx) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, vvas_ctx->log_level, "invalid argument");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid argument");
     return VVAS_RET_INVALID_ARGS;
   }
 

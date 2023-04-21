@@ -67,7 +67,7 @@ typedef enum {
   VVAS_H265_NALU_UNSPECIFIED_MAX = 63,
 } VvasH265NALUType;
 
-#define IS_H265_VCL_NALU(nalu_type) (((nalu_type) >= VVAS_H265_NALU_TRAIL_N) && ((nalu_type) <= VVAS_H265_NALU_RESERVED_VCL23))
+#define IS_H265_VCL_NALU(nalu_type) ((nalu_type) <= VVAS_H265_NALU_RESERVED_VCL23)
 #define IS_H265_NONVCL_NALU(nalu_type) (((nalu_type) >= VVAS_H265_NALU_VPS) && ((nalu_type) <= VVAS_H265_NALU_UNSPECIFIED_MAX))
 #define IS_H265_SUPPORTED_VCL_NALU(nalu_type) (((nalu_type) <= VVAS_H265_NALU_RASL_R) || (((nalu_type) >= VVAS_H265_NALU_BLA_W_LP) && ((nalu_type) <= VVAS_H265_NALU_CRA_NUT)))
 
@@ -303,7 +303,7 @@ static int32_t parse_hevc_slice_header(VvasParserBuffer* in_buffer,
   init_get_bits (&getbits, pt, end);
   slice_hdr->first_slice_segment_in_pic_flag = get_bits_byte(&getbits, 1);
 
-  if (nalutype >= 23 && nalutype <= 16) {
+  if (nalutype >= VVAS_H265_NALU_BLA_W_LP  && nalutype <= VVAS_H265_NALU_RESERVED_VCL23) {
     slice_hdr->no_output_of_prior_pics_flag = get_bits_byte(&getbits, 1);
   }
 
@@ -603,9 +603,16 @@ static int32_t parse_hevc_sps (VvasParserBuffer* in_buffer,
       vui_time_scale = get_bits_long (&getbits, 32);
       parsedata->fr_num = vui_time_scale;
       parsedata->fr_den = vui_num_units_in_tick;
-      unsigned long temp = gcd (parsedata->fr_num, parsedata->fr_den);
-      parsedata->fr_num /= temp;
-      parsedata->fr_den /= temp;
+      if (!parsedata->fr_den) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, LOG_LEVEL_ERROR, "Invalid framerate");
+        free (buffer.data);
+        return P_ERROR;
+      }
+      if (parsedata->fr_num) {
+        unsigned long temp = gcd (parsedata->fr_num, parsedata->fr_den);
+        parsedata->fr_num /= temp;
+        parsedata->fr_den /= temp;
+      }
     }
   }
 
@@ -658,7 +665,7 @@ parse_h265_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
       return VVAS_RET_ERROR;
     }
 
-    if (self->last_ret == P_MOREDATA && !is_eos) {
+    if (self->last_ret == P_MOREDATA && !is_eos && in_buffer->data) {
       self->last_nalu_offset = 0; /* partial inbuf is starting with NALU header */
       /* we already having one NALU header and looking for next */
       has_nalu_header = 1;
@@ -712,6 +719,9 @@ parse_h265_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
         out_buffer->data = self->partial_outbuf.data;
         out_buffer->size = self->partial_outbuf.size;
       }
+
+      if (self->partial_inbuf.data)
+        free (self->partial_inbuf.data);
 
       memset (&self->partial_inbuf, 0x0, sizeof (VvasParserBuffer));
       memset (&self->partial_outbuf, 0x0, sizeof (VvasParserBuffer));
@@ -931,6 +941,9 @@ parse_h265_au (VvasParserPriv *self, VvasParserBuffer *in_buffer,
       out_buffer->data = self->partial_outbuf.data;
       out_buffer->size = self->partial_outbuf.size;
       out_buffer->offset = 0;
+
+      if (self->partial_inbuf.data)
+        free (self->partial_inbuf.data);
 
       memset (&self->partial_outbuf, 0x0, sizeof (VvasParserBuffer));
       memset (&self->partial_inbuf, 0x0, sizeof (VvasParserBuffer));

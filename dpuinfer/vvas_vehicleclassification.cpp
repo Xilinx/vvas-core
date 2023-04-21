@@ -44,8 +44,8 @@ vvas_vehicleclassification::run (void * handle, std::vector<cv::Mat>& images,
         "image[%d].scores.size = %lu", i, results[i].scores.size());
 
     if (results[i].scores.size()) {
-      VvasBoundingBox parent_bbox;
-      VvasBoundingBox child_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
+      VvasBoundingBox child_bbox = { 0 };
       VvasInferPrediction *child_predict;
 
       int cols = images[i].cols;
@@ -93,13 +93,17 @@ vvas_vehicleclassification::run (void * handle, std::vector<cv::Mat>& images,
       child_predict->model_name = strdup (kpriv->modelname.c_str ());
       vvas_inferprediction_append (parent_predict, child_predict);
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s", pstr);
-      free(pstr);
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free(pstr);
+      }
     }
 
     predictions[i] = parent_predict;
   }
+
   LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level, " ");
   return true;
 }

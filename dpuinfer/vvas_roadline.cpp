@@ -38,7 +38,7 @@ vvas_roadline::run (void * handle, std::vector < cv::Mat > &images,
   auto results = model->run (images);
 
   for (auto i = 0u; i < results.size (); i++) {
-    VvasBoundingBox parent_bbox;
+    VvasBoundingBox parent_bbox = { 0 };
     VvasInferPrediction *parent_predict = NULL;
     int cols = images[i].cols;
     int rows = images[i].rows;
@@ -48,10 +48,11 @@ vvas_roadline::run (void * handle, std::vector < cv::Mat > &images,
 
     parent_predict = predictions[i];
 
-  for (auto & line:results[i].lines) {
+    for (auto & line:results[i].lines) {
       Feature *feat;
       VvasInferPrediction *predict;
-      
+      int line_size;
+
       char *pstr;               /* prediction string */
 
       if (line.type == 2 && line.points_cluster[0].x < rows * 0.5)
@@ -69,7 +70,17 @@ vvas_roadline::run (void * handle, std::vector < cv::Mat > &images,
       feat = &predict->feature;
       feat->type = ROADLINE;
       feat->line_type = road_line_type (line.type);
-      feat->line_size = line.points_cluster.size ();
+      line_size = line.points_cluster.size ();
+
+      if (line_size > VVAS_MAX_FEATURES) {
+        LOG_MESSAGE (LOG_LEVEL_WARNING, kpriv->log_level, "Number of road_line"
+          "(%d) bigger than max supported(%d), ignoring road_line data post "
+          "idx=%d\n", line_size, VVAS_MAX_FEATURES, VVAS_MAX_FEATURES);
+
+        feat->line_size = VVAS_MAX_FEATURES;
+      } else {
+        feat->line_size = line_size;
+      }
 
       for (auto j = 0u; j < feat->line_size; j++) {
         feat->road_line[j].x = line.points_cluster[j].x;
@@ -93,10 +104,12 @@ vvas_roadline::run (void * handle, std::vector < cv::Mat > &images,
       predict->model_name = strdup (kpriv->modelname.c_str ());
       vvas_inferprediction_append (parent_predict, predict);
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-          pstr);
-      free (pstr);
+      if( kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
     }
     predictions[i] = parent_predict;
   }

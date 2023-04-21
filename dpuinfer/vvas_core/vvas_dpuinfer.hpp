@@ -17,7 +17,8 @@
  */
 
 /**
- *  DOC: Contains structures and methods related to VVAS inference.
+ * DOC: VVAS DPU Infer APIs
+ * This file contains structures and methods related to VVAS Inference.
  */
  
 #include <vvas_core/vvas_infer_prediction.h>
@@ -33,12 +34,12 @@ extern "C" {
  * struct VvasDpuInferConf - Contains information related to model and configurable parameters
  * @model_path: Model path
  * @model_name: Model name
- * @model_format: Model format
+ * @model_format: Color format of the input image, like BGR, RGB etc., expected by the model
  * @modelclass: Model class
  * @batch_size: Batch size
- * @need_preprocess: Use Vitis-AI preprocessing
+ * @need_preprocess: If this is set to true, then software pre-processing will be performed using Vitis-AI library
  * @performance_test: Performance test
- * @objs_detection_max: Sort based on max area
+ * @objs_detection_max: Sort the detected objects based on area of the bounding box, from highest to lowest area.
  * @filter_labels: Array of labels to process
  * @num_filter_labels: Number of labels to process
  * @float_feature: Float feature
@@ -70,8 +71,8 @@ typedef struct {
  * @mean_g: Mean value of G channel
  * @mean_b: Mean value of B channel
  * @scale_r: Scale value of R channel
- * @scale_g: Scale value of R channel
- * @scale_b: Scale value of R channel
+ * @scale_g: Scale value of G channel
+ * @scale_b: Scale value of B channel
 */
 typedef struct {
   int model_width;
@@ -91,7 +92,7 @@ typedef struct {
 typedef void VvasDpuInfer;
 
 /**
- *  vvas_dpuinfer_create () - Upon success initializes DPU with config parameters and allocates DpuInfer instance
+ *  vvas_dpuinfer_create () - Initializes DPU with config parameters and allocates DpuInfer instance
  *
  *  @dpu_conf: VvasDpuInferConf structure.
  *  @log_level: VvasLogLevel enum.
@@ -108,11 +109,10 @@ VvasDpuInfer * vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel l
  *  vvas_dpuinfer_process_frames () - This API processes frames in a batch.
  *
  *  @dpu_handle: VvasDpuInfer handle created using @vvas_dpuinfer_create.
- *  @inputs: Array of @ref VvasVideoFrame
- *  @predictions: Array of @ref VvasInferPrediction
+ *  @inputs: Array of @VvasVideoFrame
+ *  @predictions: Array of @VvasInferPrediction. MAX_NUM_OBJECT is defined as 512.
  *  @batch_size: Batch size.
  *
- *  MAX_NUM_OBJECT is defined as 512.
  *  This API returns VvasInferPrediction to each frame.
  *  It is user's responsibility to free the VvasInferPrediction of each frame.
  *

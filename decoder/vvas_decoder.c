@@ -334,7 +334,7 @@ static bool destroy_out_buffers (VvasDecoderPrivate  *pinst){
  *  @brief Internal function to allocate the buffers needed for VCU_PREINIT
  */
 static bool allocate_internal_buffers (VvasDecoderPrivate *pinst) {
-  uint32_t i, iret;
+  int32_t i, iret;
 
   /* Allocate the memory for BO container */
   pinst->cmd_buf = (xrt_buffer *) calloc(1, sizeof(xrt_buffer));
@@ -475,7 +475,7 @@ static bool send_command(VvasDecoderPrivate *pinst, VcuCmdType cmd_id,
   struct timespec timenow;
   uint64_t timestamp;
   uint32_t i, num_idx = 0;
-  uint32_t ret = 0;
+  int32_t ret = 0;
 
   #define CMD_EXEC_TIMEOUT 1000
 
@@ -605,6 +605,9 @@ static bool send_command(VvasDecoderPrivate *pinst, VcuCmdType cmd_id,
       return FALSE;
     }
 
+    /* temporary fix: sleep of 1 msec to fix CR-1156069 */
+    usleep(1000);
+
     if(!payload_buf->cmd_rsp)
       return FALSE;
   }
@@ -624,7 +627,7 @@ static bool send_command(VvasDecoderPrivate *pinst, VcuCmdType cmd_id,
  *  @param[in] dec_type - Type of the decoder to be used (i.e. H264/H265)
  *  @param[in] hw_instance_id - Decoder instance index in a multi-instance decoder
  *             Incase of V70, this represents HW instance index and can have
- *             any value from the range 0..3.
+ *             any value from the range 0..1.
  *  @param[in] log_level - Logging level
  *
  *  @return  On Success returns VvasDecoder handle pointer \n
@@ -641,27 +644,27 @@ VvasDecoder* vvas_decoder_create (VvasContext *vvas_ctx, uint8_t *dec_name,
 
   /* Validate Log level */
   if (log_level > LOG_LEVEL_DEBUG || log_level < LOG_LEVEL_ERROR) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME, "Invalid log_level");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Invalid log_level");
     return NULL;
   }
 
   /* Validate vvas_ctx */
   if (vvas_ctx == NULL) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME,
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG,
       "Invaid vvas_ctx = %p", vvas_ctx);
     return NULL;
   }
 
   /* Validate the hw_instance_id */
-  if (hw_instance_id > 3) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME,
-      "PS kernel VDU HW instance id=%d is not in the valid range [0, 3]", hw_instance_id);
+  if (hw_instance_id > (MAX_VDU_HW_INSTANCES - 1)) {
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG,
+      "PS kernel VDU HW instance id=%d is not in the valid range [0, %d]", hw_instance_id, (MAX_VDU_HW_INSTANCES-1));
     return NULL;
   }
 
   /* Validate dec_type */
   if (dec_type != VVAS_CODEC_H264 && dec_type != VVAS_CODEC_H265) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME,
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG,
       "Invalid dec_type %d, valid range is [%d - %d]", dec_type,
       VVAS_CODEC_H264, VVAS_CODEC_H265);
     return NULL;
@@ -669,7 +672,7 @@ VvasDecoder* vvas_decoder_create (VvasContext *vvas_ctx, uint8_t *dec_name,
 
   self = (VvasDecoderPrivate *)malloc(sizeof(VvasDecoderPrivate));
   if(self == NULL) {
-    LOGE(self, "Failed to allocate the memory");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Failed to allocate the memory");
     return NULL;
   }
 
@@ -705,11 +708,13 @@ VvasDecoder* vvas_decoder_create (VvasContext *vvas_ctx, uint8_t *dec_name,
   self->icfg = malloc(sizeof(VvasDecoderInCfg));
   if (self->icfg == NULL) {
     LOGE(self, "Failed to allocate icfg memory");
+    goto failed;
   }
 
   self->ocfg = malloc(sizeof(VvasDecoderOutCfg));
   if (self->ocfg == NULL) {
     LOGE(self, "Failed to allocate icfg memory");
+    goto failed;
   }
 
   /* memset the icfg and ocfg */
@@ -718,7 +723,6 @@ VvasDecoder* vvas_decoder_create (VvasContext *vvas_ctx, uint8_t *dec_name,
 
   /* Initialize the hash table */
   self->oidx_hash = vvas_hash_table_new(vvas_direct_hash, vvas_direct_equal);
-
 
   self->hskd = self->vvas_ctx->dev_handle;
   if (vvas_xrt_open_context
@@ -747,6 +751,18 @@ VvasDecoder* vvas_decoder_create (VvasContext *vvas_ctx, uint8_t *dec_name,
   return (VvasDecoder *) self;
 
 failed:
+  if (self->icfg) {
+    free (self->icfg);
+  }
+  if (self->ocfg) {
+    free (self->ocfg);
+  }
+  if (self->oidx_hash) {
+    vvas_hash_table_unref (self->oidx_hash);
+  }
+  if (self->kernel_handle) {
+    vvas_xrt_close_context (self->kernel_handle);
+  }
   free(self);
 
   return NULL;
@@ -772,7 +788,7 @@ VvasReturnType vvas_decoder_config(VvasDecoder* dec_handle,
 
   /* Check the handle validity */
   if(!self || self->handle != dec_handle) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME, "Invalid Handle\n");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Invalid Handle");
     return VVAS_RET_INVALID_ARGS;
   }
   dcfg = (dec_params_t *) (self->dec_cfg_buf->user_ptr);
@@ -942,7 +958,7 @@ VvasReturnType vvas_decoder_submit_frames(VvasDecoder* dec_handle,
 
   /* Check the handle validity */
   if(!self || self->handle != dec_handle) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME, "Invalid Handle\n");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Invalid Handle\n");
     return VVAS_RET_INVALID_ARGS;
   }
 
@@ -1147,7 +1163,7 @@ VvasReturnType vvas_decoder_get_decoded_frame(VvasDecoder* dec_handle,
 
   /* Check handle for validity */
   if(!self || self->handle != dec_handle) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME, "Invalid Handle\n");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Invalid Handle");
     return VVAS_RET_INVALID_ARGS;
   }
 
@@ -1188,13 +1204,19 @@ VvasReturnType vvas_decoder_get_decoded_frame(VvasDecoder* dec_handle,
     return VVAS_RET_ERROR;
   }
 
-  /* Kernel might return multiple output frame, cash the same and return one
+  /* Kernel might return multiple output frame, cache the same and return one
   frame to user */
   if (self->last_rcvd_payload.free_index_cnt) {
     self->last_rcvd_oidx = 0;
     LOGD(self, "VCU_RECEIVE got %d free_index_cnt",
       self->last_rcvd_payload.free_index_cnt);
     idx = self->last_rcvd_payload.obuff_index[self->last_rcvd_oidx];
+    
+    if (idx >= FRM_BUF_POOL_SIZE) {
+      LOGE(self, "Invalid index:%d last_rcvd_oidx:%d", idx, self->last_rcvd_oidx);
+      return VVAS_RET_ERROR;
+    }
+    
     out_meta_data.pts
       = self->last_rcvd_payload.obuff_meta[self->last_rcvd_oidx].pts;
     *output = self->obuf_db[idx].vframe;
@@ -1233,7 +1255,7 @@ VvasReturnType vvas_decoder_destroy (VvasDecoder* dec_handle)
   VvasDecoderPrivate *self = (VvasDecoderPrivate *) dec_handle;
 
   if(!self || self->handle != dec_handle) {
-    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, MODULE_NAME, "Invalid Handle\n");
+    LOG_MESSAGE(LOG_LEVEL_ERROR, LOG_LEVEL_DEBUG, "Invalid Handle");
     return VVAS_RET_INVALID_ARGS;
   }
 

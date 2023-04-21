@@ -16,8 +16,9 @@
  * limitations under the License.
  */
 
- /**
- *  DOC: Contains common structures for inference classes
+/**
+ * DOC: VVAS Dpu Infer Common APIs
+ * This file contains common structures for inference classes.
  */
 
 #pragma once

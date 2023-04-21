@@ -465,11 +465,29 @@ prediction_to_string (VvasInferPrediction * self, int level)
   children = prediction_children_to_string (self, level + 1);
 
   int len = 0;
-  (bbox != NULL) ? (len += strlen (bbox)) : (len += 0);
-  (classes != NULL) ? (len += strlen (classes)) : (len += 0);
-  (children != NULL) ? (len += strlen (children)) : (len += 0);
+
+  if (bbox != NULL) {
+    len += strlen (bbox);
+  }
+
+  if (classes != NULL) {
+    len += strlen (classes);
+  }
+
+  if (children != NULL) {
+    len += strlen (children);
+  }
+
+  if(self->obj_track_label) {
+    len += strlen(self->obj_track_label);
+  }
 
   prediction = (char *) calloc (len + MAX_LEN, sizeof (char));
+  if (prediction == NULL) {
+    LOG_E("Failed to allocate memory of size=%d\n", len + MAX_LEN);
+    goto error;
+  }
+
   snprintf (prediction, (len + MAX_LEN - 1), "{\n"
       "%*s  id : %" "lu" ",\n"
       "%*s  enabled : %s,\n"
@@ -489,6 +507,7 @@ prediction_to_string (VvasInferPrediction * self, int level)
       indent, "", indent, "", classes, indent, "",
       indent, "", indent, "", children, indent, "", indent, "");
 
+error:
   free (bbox);
   free (children);
   free (classes);

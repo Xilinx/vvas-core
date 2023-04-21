@@ -17,7 +17,8 @@
  */
 
 /**
- *  DOC: Contains data type and API declarations for Inference operations
+ * DOC: VVAS Infer Prediction APIs
+ * This file contains data type and API declarations for Inference operations.
  */
 
 #ifndef __VVAS_INFER_PREDICTION_H__

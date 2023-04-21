@@ -17,9 +17,10 @@
  
  
 /**
- *DOC: VVAS Queue API's
- *Contains API's for handling Queue related operations.
+ * DOC: VVAS Queue APIs
+ * This file contains APIs for handling Queue related operations.
  */
+
 #ifndef _VVAS_QUEUE_H_
 #define _VVAS_QUEUE_H_
 
@@ -123,13 +124,13 @@ extern "C"
   uint32_t vvas_queue_get_length (VvasQueue * vvas_queue);
 
 /**
- * typedef VvasFunc - Queue iteration callback.
+ * typedef VvasQueueFunc - Queue iteration callback.
  * @data: Queue handle. 
  * @udata: user data. 
  * Context:  Call back function.
  * Return: void.
 */
-  typedef void (*VvasFunc) (void *data, void *udata);
+  typedef void (*VvasQueueFunc) (void *data, void *udata);
 
 /**
  *  vvas_queue_for_each () - Callback function called for each element.
@@ -140,7 +141,7 @@ extern "C"
  *           user_data to the function. func should not modify the queue.
  *  Return: None.
  */
-  void vvas_queue_for_each (VvasQueue * vvas_queue, VvasFunc func,
+  void vvas_queue_for_each (VvasQueue * vvas_queue, VvasQueueFunc func,
       void *user_data);
 
 /**

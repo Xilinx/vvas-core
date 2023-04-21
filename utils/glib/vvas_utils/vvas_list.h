@@ -16,12 +16,12 @@
  */
 
 /** 
- *DOC: VVAS List API's
- *Contains API's for handling List related operations.
+ * DOC: VVAS List APIs
+ * This file contains APIs for handling List related operations.
  */
+
 #ifndef __VVAS_LIST_H__
 #define __VVAS_LIST_H__
-
 
 #include <stdint.h>
 #ifndef VVAS_UTILS_INCLUSION
@@ -32,6 +32,13 @@
 extern "C" {
 #endif
 
+/* While converting to RST files, kernel-doc is not able to 
+ * parse funtion pointer typedef with return type as void *.
+ * Adding Macro to avoid parse warnings. 
+ */
+#ifndef VOID_POINTER
+#define VOID_POINTER     void* 
+#endif
 
 /**
  *  struct VvasList - Data structure for the list element.
@@ -154,7 +161,7 @@ void vvas_list_free_full(VvasList* list, vvas_list_free_notify func);
  *
  *  Return: New copied list.
  * */
-typedef void* (*vvas_list_copy_func) (const void* src_list, void* data);
+typedef VOID_POINTER (*vvas_list_copy_func) (const void* src_list, void* data);
 
 /**
  *  vvas_list_copy_deep - Performs deep copy of the list node passed.

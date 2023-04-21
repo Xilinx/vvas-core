@@ -15,13 +15,11 @@
  * limitations under the License.
  */
 /** 
- *DOC:  VVAS Metaaffixer API's
- *This file contains prototypes which will scale  infer metadata
- *to given input resolution. The infer meta data to use for a given 
- *input frame is decided based on PTS. If the PTS of the given input 
- *frame is less than PTS of current infer metadata then previous 
- *infer meta data is choosen & scaled to requested resolution. If 
- *not, current infer metadata is used. 
+ *DOC:  VVAS Metaaffixer APIs
+ * This file describes APIs for metaaffixer that can be used to scale the
+ * inference metadata as per the different resolution than the original resolution.
+ * The infer meta data to be scaled and attached is decided based on matching the
+ * PTS of the source and the destination frames.
  */
 
 #ifndef __VVAS_METAAFFIXER_H__
@@ -76,21 +74,21 @@ void vvas_metaaffixer_destroy(VvasMetaAffixer *handle);
 /**
  *  vvas_metaaffixer_get_frame_meta() - Provides scaled metadata. 
  *  @handle: Address of context handle @ref VvasMetaAffixer
- *  @sync_infer_lastpts: if TRUE then last received infer meta data  
- *                               is used for scaling else reference infer metadata is 
- *                               chosen cored on PTS of input frame.
+ *  @sync_pts: if FALSE then last received infer meta data
+ *                               is used for scaling. Else reference infer metadata is
+ *                               chosen based on PTS of input frame.
  *  @vinfo: Input Frame Information
  *  @metadata: Metadata of input frame
  *  @respcode: Metaaffixer response code.
  *  @ScaledMetaData: Scaled meta data is updated here.
  *
- *  Context: This function returns scaled metadata cored on input frame info
+ *  Context: This function returns scaled metadata based on input frame info
  *  Return: 
  *  * On Success returns VVAS_SUCCESS
  *  * On Failure returns VVAS_RET_ERROR 
  */
  VvasReturnType vvas_metaaffixer_get_frame_meta(VvasMetaAffixer *handle,
-                                                bool sync_infer_lastpts,
+                                                bool sync_pts,
                                                 VvasVideoInfo *vinfo,
                                                 VvasMetadata *metadata,
                                                 VvasMetaAffixerRespCode *respcode,
@@ -103,7 +101,7 @@ void vvas_metaaffixer_destroy(VvasMetaAffixer *handle);
  *  @metadata: Metadata of frame
  *  @infer: Infer metadata associated with infer frame
  *  
- *  Context: This function will submit meta data information into table 
+ *  Context: This function will submit meta data information.
  *  Return: 
  *  * On Success returns VVAS_RET_SUCCESS
  *  * On Failure returns VVAS_RET_ERROR

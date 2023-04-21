@@ -17,7 +17,7 @@
  */
 
 /**
- * DOC: VVAS Parser API's
+ * DOC: VVAS Parser APIs
  * This file contains prototypes for parsining and extracting access-unit(au)
  * from avc/h264 or hevc/h265 elementary stream.
  */
@@ -82,30 +82,53 @@ VvasParser* vvas_parser_create (VvasContext* vvas_ctx, VvasCodecType codec_type,
   VvasLogLevel log_level);
 
 /**
- * vvas_parser_get_au - Internal function called for each list element to add
- * new or update existing entry into the obuf_db.
+ * vvas_parser_get_au - This API is called to extract one complete encoded Access Unit/Frame 
+ * from the input elementary stream buffer. It may be possible that there is partial AU in 
+ * current input buffer. In this case this function will return VVAS_RET_NEED_MOREDATA indicating 
+ * that parser need more data to extract the complete AU. In this case user needs to call this 
+ * API several times with new elementary stream data to get complete AU.
+ * It is also possible that there is more than one AUs (access-units) in current input buffer. 
+ * In this case this function will return the first complete AU in this buffer and the "offset" 
+ * parameter will represent the amount of data consumed from the beginning of the current input 
+ * buffer. To get remaining AUs in this buffer, this APIs must be called with same input buffer 
+ * and "offset" received in previous call to this function, until this function returns either 
+ * a new AU, VVAS_RET_NEED_MOREDATA or VVAS_RET_ERROR.
  * @handle: VvasParser handle pointer.
- * @inbuf: Input data blob pointer to be parsed.
- * @valid_insize: Valid input size.
- * @outbuf: output VvasMemory pointer containing access-unit(au) on successful
- * find of the same, else returns NULL.
- * @offset: offset in data blob to parsed for input, whereas for out it returns
- * offset till which data blob has been processed.
- * @dec_cfg: pointer to pointer of stream information, only valid if there is
- * change else it returns NULL.
- * @is_eos: whether end of stream has happened. All of the input data blob
+ * @inbuf: Input data blob pointer (pointer to elementary stream buffer) to be parsed.
+ * @valid_insize: Valid input data buffer size. The "inbuf" is allocated initially once
+ * based on the application requirements, like stream resolution, bitrate etc. 
+ * Later on, this same buffer is re-sent with new data. For example, let's assume 
+ * "inbuf" size is 4K bytes at the beginning. As long as this buffer is completely 
+ * carrying new data of 4K size, then "valid_insize" will be 4K. But towards the end 
+ * of stream when the available new data is less than 4K bytes, say, it is 3K only, 
+ * then "valid_insize" will be 3K even though the buffer size is 4K.
+ * @outbuf: output VvasMemory pointer containing one encoded access-unit(au)/frame on 
+ * success, else returns NULL.
+ * @offset: This is input as well as output parameter to this function. As an input 
+ * to this function, this parameter indicates from which offset, from the beginning 
+ * of the input buffer, the parser needs to start parsing. This is required when there
+ * are multiple AUs/Frames in the current input buffer. As an output, this parameter 
+ * represents how much data, from the beginning of the current input buffer, has been 
+ * consumed.
+ * @dec_cfg: pointer to pointer of decoder configuration. Valid if there is
+ * change in stream properties with respect to previous properties else its value will be NULL.
+ * @is_eos: whether end of stream is reached. All of the input data blob
  * should be consumed by the parser before setting this argument to TRUE. It
  * should be sent as TRUE if earlier invocation of this API returned
- * VVAS_RET_NEED_MOREDATA and there is no further data to be sent.
+ * VVAS_RET_NEED_MOREDATA and there is no new data has been passed in this call.
  *
- * Context: This function returns access-unit in outbuf if found and dec_cfg
- * if there is any change in stream properties. outbuf VvasMemory is allocated
- * by this function and its resposiblity of application to free this memory
- * once it has been consumed.
+ * Context: This function returns one encoded access-unit/frame in "outbuf", if found. 
+ * The "outbuf" is allocated by this function and it is the responsibility of application
+ * to free this memory once it has been consumed.
+ * This function also returns decoder configuration information in "dec_cfg" parameter along 
+ * with first AU. In case the stream properties remain same, then "dec_cfg" will be NULL for 
+ * the sub-sequent AUs. In case there is change in the stream properties which requires decoder
+ * re-configuration then decoder configuration information, "dec_cfg", parameter will have new 
+ * decoder configuration.
  *
  * Return:
  * * VVAS_RET_SUCCESS on Success.
- * * VVAS_RET_NEED_MOREDATA, If more data is needed.
+ * * VVAS_RET_NEED_MOREDATA, If more data is needed to extract a complete Access Unit/frame.
  * * VVAS_RET_ERROR on any other Failure.
  */
 VvasReturnType vvas_parser_get_au(VvasParser *handle, VvasMemory *inbuf,

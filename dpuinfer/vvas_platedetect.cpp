@@ -43,7 +43,7 @@ vvas_platedetect::run (void * handle, std::vector < cv::Mat > &images,
 
     //if (results[i].box.size()) //TODO
     if (results[i].box.score >= (float) 0.1) {
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
       int cols = images[i].cols;
       int rows = images[i].rows;
 
@@ -73,9 +73,8 @@ vvas_platedetect::run (void * handle, std::vector < cv::Mat > &images,
           ymax = rows;
         float confidence = box.score;
 
-        VvasBoundingBox bbox;
+        VvasBoundingBox bbox = { 0 };
         VvasInferPrediction *predict;
-        VvasInferClassification *c = NULL;
 
         bbox.x = xmin;
         bbox.y = ymin;
@@ -87,12 +86,6 @@ vvas_platedetect::run (void * handle, std::vector < cv::Mat > &images,
         predict = vvas_inferprediction_new ();
         predict->bbox = bbox;
 
-        c = vvas_inferclassification_new ();
-        c->class_id = -1;
-        c->class_prob = confidence;
-        c->class_label = strdup ("numplate");
-        c->num_classes = 0;
-        predict->classifications = vvas_list_append (predict->classifications, c);
         /* add class and name in prediction node */
         predict->model_class = (VvasClass) kpriv->modelclass;
         predict->model_name = strdup (kpriv->modelname.c_str ());
@@ -103,11 +96,12 @@ vvas_platedetect::run (void * handle, std::vector < cv::Mat > &images,
 
       }
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-          pstr);
-      free (pstr);
-
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
     }
     predictions[i] = parent_predict;
 

@@ -623,7 +623,7 @@ vvas_scaler_generate_cardinal_cubic_spline (int src, int dst,
     }
 
     if (OutputWrite_En) {
-      xDstInSrc = ReadLoc * (1 << 17) + PhaseH * (1 << 11);
+      xDstInSrc = (ReadLoc * (int64_t) (1 << 17)) + PhaseH * (1 << 11);
       xx = ReadLoc - (filterSize - 2) / 2;
 
       d = (vvas_scaler_abs (((int64_t) xx * (1 << 17)) - xDstInSrc)) << 13;
@@ -1305,7 +1305,7 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
   0};
   uint64_t in_phy_addr[3] = { 0 }, out_phy_addr[3] = {
   0};
-  uint32_t input_stride, output_stride;
+  uint32_t input_stride, input_elevation, output_stride, output_elevation;
   bool ret = false;
 
 #ifdef ENABLE_PPE_SUPPORT
@@ -1325,7 +1325,10 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
 
   /* Considering stride as stride of the first plane */
   input_stride = in_vinfo.stride[0];
+  input_elevation = in_vinfo.elevation[0];
+
   output_stride = out_vinfo.stride[0];
+  output_elevation = out_vinfo.elevation[0];
 
   if (input_stride % WIDTH_ALIGN) {
     LOG_ERROR (self->log_level, "Input stride[%u] must be aligned to %u",
@@ -1342,10 +1345,17 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
   /* Validate aligned parameters against boundary conditions
    */
   if (((src_rect->x + src_rect->width) > input_stride)
-      || ((src_rect->y + src_rect->height) > in_vinfo.height)) {
-    LOG_ERROR (self->log_level, "Rect param is beyond original input video");
+      || ((src_rect->y + src_rect->height) > input_elevation)) {
+    LOG_ERROR (self->log_level, "Src Rect param is beyond original input video");
     goto error;
   }
+
+  if (((dst_rect->x + dst_rect->width) > output_stride)
+      || ((dst_rect->y + dst_rect->height) > output_elevation)) {
+    LOG_ERROR (self->log_level, "Dst Rect param is beyond original input video");
+    goto error;
+  }
+
 
   internal_buf = GET_INTERNAL_BUFFERS (idx);
   if (!internal_buf) {
@@ -1606,13 +1616,15 @@ vvas_scaler_create_impl (VvasContext * ctx, const char *kernel_name,
  */
 static VvasReturnType
 vvas_scaler_channel_add_impl (VvasScalerInstace * hndl,
-    VvasScalerRect * src_rect, VvasScalerRect * dst_rect, VvasScalerPpe * ppe)
+    VvasScalerRect * src_rect, VvasScalerRect * dst_rect,
+    VvasScalerPpe * ppe, VvasScalerParam *param)
 {
   VvasScalerImpl *self;
   VvasReturnType ret = VVAS_RET_ERROR;
   VvasAllocationType alloc_type;
   VvasAllocationFlags alloc_flag;
   bool bret;
+  VvasVideoInfo out_vinfo;
 
   if (!hndl || !src_rect || !dst_rect || !src_rect->frame || !dst_rect->frame) {
     return VVAS_RET_INVALID_ARGS;
@@ -1656,6 +1668,13 @@ vvas_scaler_channel_add_impl (VvasScalerInstace * hndl,
   if (!bret) {
     LOG_ERROR (self->log_level, "Failed to validate rect params");
     goto error_;
+  }
+
+  vvas_video_frame_get_videoinfo (dst_rect->frame, &out_vinfo);
+
+  if (param && param->type == VVAS_SCALER_LETTERBOX &&  !(out_vinfo.width < vvas_scaler_align (dst_rect->width, 8 * self->props.ppc))) {
+    dst_rect->width = vvas_scaler_align (dst_rect->width, 8 * self->props.ppc);
+
   }
 
   if (vvas_list_length (self->internal_buf_list) <= self->num_of_channels) {

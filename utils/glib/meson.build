@@ -14,7 +14,7 @@ vvas_utils_headers = ['vvas_utils/vvas_hash.h',
                        'vvas_utils/vvas_mutex.h',
                        'vvas_utils/vvas_node.h',
                        'vvas_utils/vvas_queue.h']
-glib_req = '>= 2.44.0'
+glib_req = '>= 2.60.0'
 glib_deps = dependency('glib-2.0', version : glib_req,
               fallback: ['glib', 'libglib_dep'])
 

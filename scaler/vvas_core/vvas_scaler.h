@@ -228,9 +228,11 @@ VvasScaler * vvas_scaler_create (VvasContext * ctx,
 
 /**
  *  vvas_scaler_channel_add() - This API adds one processing channel configuration.
- *  Scaler may have alignment requirement, in such case it will adjust x, y, width
- *  and height of src_rect and dst_rect, adjusted values will be updated in the
- *  src_rect and dst_rect.
+ *  One channel represents a set of operations, like resize, color space conversion,
+ *  PPE etc. to be performed on the input buffer.
+ *  Hardware Scaler may have alignment requirement. In such case this API will adjust
+ *  x, y, width and height of src_rect and dst_rect. Adjusted values will be updated
+ *  in the src_rect and dst_rect.
  *
  *  @hndl: VvasContext handle created using @vvas_context_create
  *  @src_rect: Source Rect @VvasScalerRect
@@ -250,6 +252,8 @@ VvasReturnType vvas_scaler_channel_add (VvasScaler * hndl,
 
 /**
  *  vvas_scaler_process_frame() - This API does processing of channels added using @vvas_scaler_channel_add
+ *  There can be multiple channels added to perform different operations on the input frame.
+ *  All these operations are performed in context of this API call.
  *
  *  @hndl: VvasScaler handle pointer created using @vvas_scaler_create
  *
@@ -286,7 +290,7 @@ VvasReturnType vvas_scaler_set_filter_coef (VvasScaler * hndl,
 
 
 /**
- *  vvas_scaler_prop_get() - This API will fill current scaler properties in prop.
+ *  vvas_scaler_prop_get() - This API will fill current scaler properties.
  *  This API returns the default properties if called before setting these properties.
  *
  *  @hndl: VvasScaler handle pointer created using @vvas_scaler_create.

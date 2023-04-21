@@ -17,8 +17,8 @@
  */
 
 /** 
- *DOC: VVAS Node API's
- *Contains API's for handling Node related operations.
+ * DOC: VVAS Node APIs
+ * This file contains APIs for handling Node related operations.
  */
 
 #ifndef __VVAS_NODE_H__
@@ -29,6 +29,14 @@
 
 #ifndef VVAS_UTILS_INCLUSION
 #error "Don't include vvas_node.h directly, instead use vvas_utils/vvas_utils.h"
+#endif
+
+/* While converting to RST files, kernel-doc is not able to 
+ * parse funtion pointer typedef with return type as void *.
+ * Adding Macro to avoid parse warnings. 
+ */
+#ifndef VOID_POINTER
+#define VOID_POINTER     void* 
 #endif
 
 #ifdef __cplusplus
@@ -45,7 +53,7 @@ typedef struct _VvasTreeNode VvasTreeNode;
  * @data:  Handle for storing data.
  * @next: Handle for storing next node.
  * @prev: Handle for storing Previous node.
- * @parent: Handle for storing Previous node.
+ * @parent: Handle for storing Parent node.
  * @children: Handle for storing children.
  * */
 struct _VvasTreeNode {
@@ -110,7 +118,7 @@ void vvas_treenode_destroy(VvasTreeNode* node);
  *  * On Success returns address of the new node.
  *  * On Failure returns NULL. 
  */ 
-typedef void* (*vvas_treenode_copy_func)(const void* src, void* data);
+typedef VOID_POINTER (*vvas_treenode_copy_func)(const void* src, void* data);
     
 /** 
  *  VvasTreeNode* vvas_treenode_copy_deep() - Deep copies node. 

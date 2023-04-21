@@ -130,7 +130,7 @@ vvas_posedetect::run (void * handle, std::vector < cv::Mat > &images,
     VvasInferPrediction *parent_predict = NULL;
 
     {
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
       int cols = images[i].cols;
       int rows = images[i].rows;
 
@@ -146,37 +146,28 @@ vvas_posedetect::run (void * handle, std::vector < cv::Mat > &images,
 
       Pose14Pt *pose14pt;
       VvasInferPrediction *predict;
-      VvasInferClassification *c = NULL;
 
       predict = vvas_inferprediction_new ();
       pose14pt = &predict->pose14pt;
       copy_pose14pt_from_result (kpriv, &results[i].pose14pt, pose14pt, cols,
           rows);
 
-      c = vvas_inferclassification_new ();
-      c->class_id = -1;
-      c->class_prob = 1;
-      c->class_label = strdup ("posedetect");
-      c->num_classes = 0;
-      predict->classifications = vvas_list_append (predict->classifications, c);
-
       /* add class and name in prediction node */
       predict->model_class = (VvasClass) kpriv->modelclass;
       predict->model_name = strdup (kpriv->modelname.c_str ());
       vvas_inferprediction_append (parent_predict, predict);
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-          pstr);
-      free (pstr);
-
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
     }
     predictions[i] = parent_predict;
-
   }
 
   LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level, " ");
-
   return true;
 }
 

@@ -24,9 +24,8 @@
 #include <vvas_utils/vvas_utils.h>
 
 /**
- * DOC: Converts infer metadata data to overlay metadata
- *
- *  This file contains functions to covert different type of infer metadata to overlay metadata
+ * DOC: VVAS Metaconvert APIs
+ * This file contains functions to covert different type of infer metadata to overlay metadata.
  */
 
 #define META_CONVERT_MAX_STR_LENGTH 2048
@@ -65,7 +64,7 @@ typedef struct {
  *              With level = 0, displays all nodes information
  * @mask_level: Apply masking at specific level
  * @y_offset: Y-axis offset while displaying text
- * @draw_above_bbox_flag: Flag to draw text above or inside bounding box
+ * @draw_above_bbox_flag: Flag to draw text above or inside bounding box.
  *                        In case x and y position are zero draws inside frame left top corner
  * @text_color: Color values to be used to display text
  * @allowed_labels: List of labels from VvasInferPrediction to be considered while creating text.

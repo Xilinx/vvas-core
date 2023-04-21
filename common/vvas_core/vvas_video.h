@@ -17,7 +17,8 @@
  */
 
 /**
- *  DOC: Contains structures and methods related to VVAS Video Frame
+ * DOC: VVAS Video Common APIs
+ * This file contains structures and methods related to VVAS Video Frame.
  */
 
 #ifndef __VVAS_VIDEO_H__
@@ -83,7 +84,7 @@ typedef enum {
 } VvasVideoFormat;
 
 /**
- * struct VvasVideoAlignment - Contains video alignment related members
+ * struct VvasVideoAlignment - Contains video alignment information
  * @padding_right: Padding to the right
  * @padding_left: Padding to the left
  * @padding_top: Padding to the top
@@ -106,6 +107,7 @@ typedef struct {
  * @fmt: Video frame color format
  * @n_planes: Number of planes in video frame color format
  * @stride: Array of stride values
+ * @elevation: Array of elevation values
  * @alignment: Video frame's alignment information
  */
 typedef struct {
@@ -113,14 +115,15 @@ typedef struct {
   int32_t height;
   VvasVideoFormat fmt;
   uint32_t n_planes;
-  int32_t stride[VVAS_VIDEO_MAX_PLANES];
+  size_t stride[VVAS_VIDEO_MAX_PLANES];
+  size_t elevation[VVAS_VIDEO_MAX_PLANES];
   VvasVideoAlignment alignment;
 } VvasVideoInfo;
 
 /**
  * struct VvasVideoPlaneInfo - Structure contains information specific to a video frame plane
- * @data: Holds pointer to a video frame plane data
- * @size: Holds size of a video plane
+ * @data: Pointer to a video frame plane data
+ * @size: Size of a video plane
  * @offset: Offset of the first valid data from the @data pointer
  * @stride: Stride of a video plane
  * @elevation: Elevation (in height direction) of a video plane
@@ -162,7 +165,7 @@ extern "C" {
 /**
  *  typedef VvasVideoFrameDataFreeCB - Callback function to be called to free memory pointed by @data,
  *                                                                 when VvasMemory handle is getting freed using @vvas_video_frame_free() API.
- *  @data: Address of the array of data pointers
+ *  @data: Array of data pointers to video planes
  *  @user_data: User data pointer sent via @vvas_video_frame_alloc_from_data() API
  *
  *  Return: None
@@ -177,11 +180,11 @@ typedef void (*VvasVideoFrameDataFreeCB)(void *data[VVAS_VIDEO_MAX_PLANES], void
  * @alloc_flags: Allocation flags used to allocate video frame
  * @mbank_idx: Index of the memory bank on which memory need to be allocated
  * @vinfo: Address of VvasVideoInfo which contains video frame specific information
- * @ret: Address to store return value. Upon case of error, @ret is useful in understanding the root cause
+ * @ret: Address to store return value. In case of error, @ret is useful in understanding the root cause
  *
  * Return:
- * On success returns VvasVideoFrame handle
- * On failure returns NULL
+ * * On success, returns VvasVideoFrame handle and
+ * * On failure, returns NULL
  */
 VvasVideoFrame* vvas_video_frame_alloc (VvasContext *vvas_ctx,
                                         VvasAllocationType alloc_type,
@@ -201,8 +204,8 @@ VvasVideoFrame* vvas_video_frame_alloc (VvasContext *vvas_ctx,
  * @ret: Address to store return value. Upon case of error, @ret is useful in understanding the root cause
  *
  * Return:
- * On success returns &struct VvasVideoFrame handle
- * On failure returns NULL
+ * * On success, returns &struct VvasVideoFrame handle and
+ * * On failure, returns NULL
  */
 VvasVideoFrame* vvas_video_frame_alloc_from_data (VvasContext *vvas_ctx,
                                         VvasVideoInfo *vinfo,
@@ -212,7 +215,7 @@ VvasVideoFrame* vvas_video_frame_alloc_from_data (VvasContext *vvas_ctx,
                                         VvasReturnType *ret);
 
 /**
- * vvas_video_frame_map () - Maps @vvas_vframe to user space using @map_flags. Based on &struct VvasMemory->sync_flags, data will synchronized between host and device.
+ * vvas_video_frame_map () - Maps @vvas_vframe to user space using @map_flags. Based on &struct VvasMemory->sync_flags, data will be synchronized between host and the device.
  * @vvas_vframe: Address of &struct VvasVideoFrame
  * @map_flags: Flags used to map @vvas_vframe
  * @info: Structure which gets populated after mapping is successful

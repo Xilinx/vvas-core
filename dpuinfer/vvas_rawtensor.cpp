@@ -277,7 +277,8 @@ vvas_rawtensor::run (void *handle, std::vector < cv::Mat > &images,
       std::vector < vart::TensorBuffer * >outputsPtr =
           vvas_tb->get_output_tensor_buffers ();
 
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
+
       int cols = images[i].cols;
       int rows = images[i].rows;
       parent_bbox.x = parent_bbox.y = 0;
@@ -290,9 +291,7 @@ vvas_rawtensor::run (void *handle, std::vector < cv::Mat > &images,
       }
 
       VvasInferPrediction *predict;
-      VvasInferClassification *c = NULL;
       predict = vvas_inferprediction_new ();
-      c = vvas_inferclassification_new ();
       TensorBuf *tb = (TensorBuf *) malloc (sizeof (TensorBuf));
 
       /* fill tensor data */
@@ -336,20 +335,17 @@ vvas_rawtensor::run (void *handle, std::vector < cv::Mat > &images,
               datatype);
         }
       }
-      c->class_id = -1;
-      c->class_prob = 1;
-      c->class_label = strdup ("TensorBuf");
-      c->num_classes = 0;
-      predict->classifications = vvas_list_append (predict->classifications, c);
 
       /* add class and name in prediction node */
       predict->model_class = (VvasClass) kpriv->modelclass;
       predict->model_name = strdup (kpriv->modelname.c_str ());
       vvas_inferprediction_append (parent_predict, predict);
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
           "prediction tree : \n%s", pstr);
-      free (pstr);
+        free (pstr);
+      }
     }
     predictions[i] = parent_predict;
   }

@@ -36,7 +36,7 @@ vvas_yolov3::vvas_yolov3 (void * handle, const std::string & model_name,
   model = vitis::ai::YOLOv3::create (model_name, need_preprocess);
 }
 
-bool
+static bool
 compare_by_area (const vitis::ai::YOLOv3Result::BoundingBox & box1,
     const vitis::ai::YOLOv3Result::BoundingBox & box2)
 {
@@ -84,7 +84,7 @@ vvas_yolov3::run (void *handle, std::vector < cv::Mat > &images,
         results[i].bboxes.size ());
 
     if (results[i].bboxes.size ()) {
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
       int cols = images[i].cols;
       int rows = images[i].rows;
 
@@ -132,7 +132,7 @@ vvas_yolov3::run (void *handle, std::vector < cv::Mat > &images,
           ymax = rows;
         float confidence = box.score;
 
-        VvasBoundingBox bbox;
+        VvasBoundingBox bbox = { 0 };
         VvasInferPrediction *predict;
         VvasInferClassification *c = NULL;
 
@@ -168,7 +168,7 @@ vvas_yolov3::run (void *handle, std::vector < cv::Mat > &images,
         }
       }
 
-      if (parent_predict) {
+      if (parent_predict && kpriv->log_level >= LOG_LEVEL_DEBUG) {
         pstr = vvas_inferprediction_to_string (parent_predict);
         LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
             "prediction tree : \n%s", pstr);
@@ -179,7 +179,6 @@ vvas_yolov3::run (void *handle, std::vector < cv::Mat > &images,
   }
 
   LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level, " ");
-
   return true;
 }
 

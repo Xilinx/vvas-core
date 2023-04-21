@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 /**
- *  DOC: Contains logging function declaration and helper macros for core libraries to print log
+ *  DOC: VVAS Logging APIs
+ *  This file contains logging function declaration and helper macros for core libraries to print log
  *
  */
 
@@ -88,7 +89,7 @@ extern "C"
 #endif
 
 /**
- * vvas_log() - This function is used to log based on environment variable value VVAS_CORE_LOG_FILE_PATH
+ * vvas_log() - This function send logs to a destination based on environment variable value VVAS_CORE_LOG_FILE_PATH
  * @log_level: Log level
  * @set_log_level: Log level to filter logs
  * @filename: Source code filename from which this logging is triggered

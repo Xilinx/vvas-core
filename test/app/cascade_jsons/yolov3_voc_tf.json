@@ -1,20 +1,17 @@
 {
-  "vvas-library-repo": "/opt/xilinx/vvas/lib/",
   "inference-level": 1,
   "attach-ppe-outbuf": false,
   "kernel" : {
-    "library-name":"libvvas_xdpuinfer.so",
     "config": {
-      "batch-size":13,
+      "batch-size": 14,
       "model-name" : "yolov3_voc_tf",
       "model-class" : "YOLOV3",
-      "model-path" : "/usr/share/vitis_ai_library/models/",
-      "run-time-model" : false,
       "model-format" : "RGB",
+      "model-path" : "/usr/share/vitis_ai_library/models/",
       "performance-test" : false,
       "vitis-ai-preprocess":false,
       "debug-level" : 0,
-      "max-objects":3,
+      "max-objects": 3,
       "filter-labels":["car"]
     }
   }

@@ -294,11 +294,11 @@ vvas_overlay_rgb_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo,
   char meta_str[MAX_META_TEXT][MAX_STRING_SIZE];
   Size text_size[MAX_META_TEXT];
   int base_line[MAX_META_TEXT];
-  int str_cnt=0;
+  int str_cnt = 0;
   char *token;
   int tot_height;
   Point txt_start, txt_end;
-  int thickness =1;
+  int thickness = 1;
   char *save_ptr = NULL;
 
   memset (&ol_color, 0, sizeof (ol_color));
@@ -310,35 +310,40 @@ vvas_overlay_rgb_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo,
 
     while (head) {
       text_info = (VvasOverlayTextParams *) head->data;
-      str_cnt=0;
+      str_cnt = 0;
 
       token = NULL;
-      token = strtok_r(text_info->disp_text, "\n", &save_ptr);
+      token = strtok_r (text_info->disp_text, "\n", &save_ptr);
       while (token != NULL) {
+        
         /* Below code will print car detection and classification results in separate rows */
-        strcpy(meta_str[str_cnt], token);
+        strncpy (meta_str[str_cnt], token, MAX_STRING_SIZE);
+
+        /* Terminate with '\0' charector */
+        meta_str[str_cnt][MAX_STRING_SIZE -1] = '\0';
+        
         str_cnt++;
+
         if (str_cnt >= MAX_META_TEXT)
           break;
-        token = strtok_r(NULL, "\n", &save_ptr);
+        token = strtok_r (NULL, "\n", &save_ptr);
       }
 
-      tot_height=0;
-      for (int i=0; i<str_cnt; i++) {
+      tot_height = 0;
+      for (int i = 0; i < str_cnt; i++) {
         base_line[i] = 0;
-        text_size[i] = getTextSize(meta_str[i], text_info->text_font.font_num,
-                              text_info->text_font.font_size,
-                              thickness, &base_line[i]);
+        text_size[i] = getTextSize (meta_str[i], text_info->text_font.font_num,
+            text_info->text_font.font_size, thickness, &base_line[i]);
         base_line[i] += thickness;
         base_line[i] = base_line[i] + 4;
         tot_height += (text_size[i].height + base_line[i]);
       }
 
       if (text_info->bottom_left_origin)
-        txt_start = Point(text_info->points.x, text_info->points.y)
-                           + Point(0, -tot_height);
+        txt_start = Point (text_info->points.x, text_info->points.y)
+            + Point (0, -tot_height);
       else
-        txt_start = Point(text_info->points.x, text_info->points.y);
+        txt_start = Point (text_info->points.x, text_info->points.y);
 
       if (text_info->apply_bg_color) {
         ol_color = text_info->bg_color;
@@ -366,16 +371,17 @@ vvas_overlay_rgb_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo,
         v3_t = ol_color.blue;
       }
 
-      for (int i=0; i<str_cnt; i++) {
+      for (int i = 0; i < str_cnt; i++) {
         txt_end = txt_start +
-        Point(text_size[i].width,text_size[i].height + base_line[i]);
+            Point (text_size[i].width, text_size[i].height + base_line[i]);
         if (text_info->apply_bg_color)
-          rectangle(img, txt_start, txt_end, Scalar(v1, v2, v3), FILLED, 1, 0);
+          rectangle (img, txt_start, txt_end, Scalar (v1, v2, v3), FILLED, 1,
+              0);
 
-        txt_start = txt_start + Point(0, text_size[i].height + 4);
-        putText(img, meta_str[i], txt_start, text_info->text_font.font_num,
-                 text_info->text_font.font_size, Scalar (v1_t, v2_t, v3_t), 1);
-        txt_start = txt_start + Point(0, (base_line[i] - 4));
+        txt_start = txt_start + Point (0, text_size[i].height + 4);
+        putText (img, meta_str[i], txt_start, text_info->text_font.font_num,
+            text_info->text_font.font_size, Scalar (v1_t, v2_t, v3_t), 1);
+        txt_start = txt_start + Point (0, (base_line[i] - 4));
       }
 
       head = head->next;
@@ -768,7 +774,8 @@ vvas_overlay_nv12_draw_rect (Mat & img_y, Mat & img_uv,
                 Point (xmax, ymax)), Scalar (yScalar), thickness, 1, 0);
 
         rectangle (img_uv, Rect (Point (xmin / 2, ymin / 2),
-                Point (xmax / 2, ymax / 2)), Scalar (uvScalar), thickness/2, 1, 0);
+                Point (xmax / 2, ymax / 2)), Scalar (uvScalar), thickness / 2,
+            1, 0);
       }
       head = head->next;
     }
@@ -807,11 +814,11 @@ vvas_overlay_nv12_draw_text (Mat & img_y, Mat & img_uv,
   char meta_str[MAX_META_TEXT][MAX_STRING_SIZE];
   Size text_size[MAX_META_TEXT];
   int base_line[MAX_META_TEXT];
-  int str_cnt=0;
+  int str_cnt = 0;
   char *token;
   int tot_height;
   Point txt_start, txt_end;
-  int thickness =2;
+  int thickness = 2;
   char *save_ptr = NULL;
 
   memset (&ol_color, 0, sizeof (ol_color));
@@ -825,25 +832,29 @@ vvas_overlay_nv12_draw_text (Mat & img_y, Mat & img_uv,
       text_info = (VvasOverlayTextParams *) head->data;
       xmin = floor (text_info->points.x / 2) * 2;
       ymin = floor (text_info->points.y / 2) * 2;
-      str_cnt=0;
+      str_cnt = 0;
 
       token = NULL;
-      token = strtok_r(text_info->disp_text, "\n", &save_ptr);
+      token = strtok_r (text_info->disp_text, "\n", &save_ptr);
       while (token != NULL) {
+
         /* Below code will print car detection and classification results in separate rows */
-        strcpy(meta_str[str_cnt], token);
+        strncpy (meta_str[str_cnt], token, MAX_STRING_SIZE);
+
+        /* Terminate with '\0' charector */
+        meta_str[str_cnt][MAX_STRING_SIZE -1] = '\0';
+
         str_cnt++;
         if (str_cnt >= MAX_META_TEXT)
           break;
-        token = strtok_r(NULL, "\n", &save_ptr);
+        token = strtok_r (NULL, "\n", &save_ptr);
       }
 
-      tot_height=0;
-      for (int i=0; i<str_cnt; i++) {
+      tot_height = 0;
+      for (int i = 0; i < str_cnt; i++) {
         base_line[i] = 0;
-        text_size[i] = getTextSize(meta_str[i], text_info->text_font.font_num,
-                              text_info->text_font.font_size,
-                              thickness, &base_line[i]);
+        text_size[i] = getTextSize (meta_str[i], text_info->text_font.font_num,
+            text_info->text_font.font_size, thickness, &base_line[i]);
         text_size[i].width = floor (text_size[i].width / 2) * 2;
         text_size[i].height = floor (text_size[i].height / 2) * 2;
         base_line[i] += thickness;
@@ -852,31 +863,34 @@ vvas_overlay_nv12_draw_text (Mat & img_y, Mat & img_uv,
       }
 
       if (text_info->bottom_left_origin)
-        txt_start = Point(xmin, ymin) + Point(0, -tot_height);
+        txt_start = Point (xmin, ymin) + Point (0, -tot_height);
       else
-        txt_start = Point(xmin, ymin);
+        txt_start = Point (xmin, ymin);
 
       if (text_info->apply_bg_color)
         convert_rgb_to_yuv_clrs (text_info->bg_color,
-                                  &bg_yScalar, &bg_uvScalar);
+            &bg_yScalar, &bg_uvScalar);
 
       convert_rgb_to_yuv_clrs (text_info->text_font.font_color,
-                                          &yScalar, &uvScalar);
+          &yScalar, &uvScalar);
 
-      for (int i=0; i<str_cnt; i++) {
+      for (int i = 0; i < str_cnt; i++) {
         txt_end = txt_start +
-        Point(text_size[i].width, text_size[i].height + base_line[i]);
+            Point (text_size[i].width, text_size[i].height + base_line[i]);
         if (text_info->apply_bg_color) {
-          rectangle(img_y, txt_start, txt_end, Scalar(bg_yScalar), FILLED, 1, 0);
-          rectangle(img_uv, txt_start/2, txt_end/2, Scalar(bg_uvScalar), FILLED, 1, 0);
+          rectangle (img_y, txt_start, txt_end, Scalar (bg_yScalar), FILLED, 1,
+              0);
+          rectangle (img_uv, txt_start / 2, txt_end / 2, Scalar (bg_uvScalar),
+              FILLED, 1, 0);
         }
 
-        txt_start = txt_start + Point(0, text_size[i].height + 4);
-        putText(img_y, meta_str[i], txt_start, text_info->text_font.font_num,
-                 text_info->text_font.font_size, Scalar (yScalar), 1);
-        putText(img_uv, meta_str[i], txt_start/2, text_info->text_font.font_num,
-                 text_info->text_font.font_size/2, Scalar (uvScalar), 1);
-        txt_start = txt_start + Point(0, (base_line[i] - 4));
+        txt_start = txt_start + Point (0, text_size[i].height + 4);
+        putText (img_y, meta_str[i], txt_start, text_info->text_font.font_num,
+            text_info->text_font.font_size, Scalar (yScalar), 1);
+        putText (img_uv, meta_str[i], txt_start / 2,
+            text_info->text_font.font_num, text_info->text_font.font_size / 2,
+            Scalar (uvScalar), 1);
+        txt_start = txt_start + Point (0, (base_line[i] - 4));
       }
       head = head->next;
     }
@@ -927,7 +941,7 @@ vvas_overlay_nv12_draw_line (Mat & img_y, Mat & img_uv,
           Scalar (yScalar), thickness, 1, 0);
 
       line (img_uv, Point (xmin / 2, ymin / 2), Point (xmax / 2, ymax / 2),
-          Scalar (uvScalar), thickness/2, 1, 0);
+          Scalar (uvScalar), thickness / 2, 1, 0);
       head = head->next;
     }
   }
@@ -986,7 +1000,7 @@ vvas_overlay_nv12_draw_arrow (Mat & img_y, Mat & img_uv,
               Scalar (yScalar), thickness, 1, 0, tiplength);
 
           arrowedLine (img_uv, Point (xmax / 2, ymax / 2), Point (xmin / 2,
-              ymin / 2), Scalar (uvScalar), thickness/2, 1, 0, tiplength);
+                  ymin / 2), Scalar (uvScalar), thickness / 2, 1, 0, tiplength);
         }
           break;
         case ARROW_DIRECTION_END:{
@@ -994,7 +1008,7 @@ vvas_overlay_nv12_draw_arrow (Mat & img_y, Mat & img_uv,
               Scalar (yScalar), thickness, 1, 0, tiplength);
 
           arrowedLine (img_uv, Point (xmin / 2, ymin / 2), Point (xmax / 2,
-              ymax / 2), Scalar (uvScalar), thickness/2, 1, 0, tiplength);
+                  ymax / 2), Scalar (uvScalar), thickness / 2, 1, 0, tiplength);
         }
           break;
         case ARROW_DIRECTION_BOTH_ENDS:{
@@ -1011,20 +1025,18 @@ vvas_overlay_nv12_draw_arrow (Mat & img_y, Mat & img_uv,
           }
 
           arrowedLine (img_y, Point (mid_x, mid_y),
-              Point (xmax, ymax), Scalar (yScalar),
-              thickness, 1, 0, tiplength);
+              Point (xmax, ymax), Scalar (yScalar), thickness, 1, 0, tiplength);
 
           arrowedLine (img_y, Point (mid_x, mid_y),
-              Point (xmin, ymin), Scalar (yScalar),
-              thickness, 1, 0, tiplength);
+              Point (xmin, ymin), Scalar (yScalar), thickness, 1, 0, tiplength);
 
           arrowedLine (img_uv, Point (mid_x / 2, mid_y / 2),
               Point (xmax / 2, ymax / 2), Scalar (uvScalar),
-              thickness/2, 1, 0, tiplength);
+              thickness / 2, 1, 0, tiplength);
 
           arrowedLine (img_uv, Point (mid_x / 2, mid_y / 2),
               Point (xmin / 2, ymin / 2), Scalar (uvScalar),
-              thickness/2, 1, 0, tiplength);
+              thickness / 2, 1, 0, tiplength);
         }
           break;
         default:
@@ -1081,7 +1093,7 @@ vvas_overlay_nv12_draw_circle (Mat & img_y, Mat & img_uv,
           Scalar (yScalar), thickness, 1, 0);
 
       circle (img_uv, Point (xmin / 2, ymin / 2), radius / 2,
-          Scalar (uvScalar), thickness/2, 1, 0);
+          Scalar (uvScalar), thickness / 2, 1, 0);
       head = head->next;
     }
   }
@@ -1147,7 +1159,7 @@ vvas_overlay_nv12_draw_polygon (Mat & img_y, Mat & img_uv,
 
       pts = (const Point *) Mat (poly_pts_uv).data;
       polylines (img_uv, &pts, &poly_info->num_pts, 1, true,
-          Scalar (uvScalar), thickness/2, 1, 0);
+          Scalar (uvScalar), thickness / 2, 1, 0);
       head = head->next;
     }                           //end of for loop
   }                             // end of if block
@@ -1282,11 +1294,11 @@ vvas_overlay_gray_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo)
   char meta_str[MAX_META_TEXT][MAX_STRING_SIZE];
   Size text_size[MAX_META_TEXT];
   int base_line[MAX_META_TEXT];
-  int str_cnt=0;
+  int str_cnt = 0;
   char *token;
   int tot_height;
   Point txt_start, txt_end;
-  int thickness =1;
+  int thickness = 1;
   char *save_ptr = NULL;
 
   //Drawing text
@@ -1296,36 +1308,41 @@ vvas_overlay_gray_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo)
 
     while (head) {
       text_info = (VvasOverlayTextParams *) head->data;
-      str_cnt=0;
+      str_cnt = 0;
 
       token = NULL;
-      token = strtok_r(text_info->disp_text, "\n", &save_ptr);
+      token = strtok_r (text_info->disp_text, "\n", &save_ptr);
       while (token != NULL) {
+        
         /* Below code will print car detection and classification results in separate rows */
-        strcpy(meta_str[str_cnt], token);
+        strncpy (meta_str[str_cnt], token, MAX_STRING_SIZE);
+
+        /* Terminate with '\0' charector */
+        meta_str[str_cnt][MAX_STRING_SIZE -1] = '\0';
+        
         str_cnt++;
+
         if (str_cnt >= MAX_META_TEXT)
           break;
-        token = strtok_r(NULL, "\n", &save_ptr);
+        token = strtok_r (NULL, "\n", &save_ptr);
       }
 
-      tot_height=0;
-      for (int i=0; i<str_cnt; i++) {
+      tot_height = 0;
+      for (int i = 0; i < str_cnt; i++) {
         base_line[i] = 0;
-        text_size[i] = getTextSize(meta_str[i], text_info->text_font.font_num,
-                              text_info->text_font.font_size,
-                              thickness, &base_line[i]);
+        text_size[i] = getTextSize (meta_str[i], text_info->text_font.font_num,
+            text_info->text_font.font_size, thickness, &base_line[i]);
         base_line[i] += thickness;
         base_line[i] = base_line[i] + 4;
         tot_height += (text_size[i].height + base_line[i]);
       }
 
       if (text_info->bottom_left_origin)
-        txt_start = Point(text_info->points.x, text_info->points.y)
-                         + Point(0, -tot_height);
+        txt_start = Point (text_info->points.x, text_info->points.y)
+            + Point (0, -tot_height);
       else
-        txt_start = Point(text_info->points.x, text_info->points.y);
- 
+        txt_start = Point (text_info->points.x, text_info->points.y);
+
       if (text_info->apply_bg_color)
         gray_val = (text_info->bg_color.red +
             text_info->bg_color.green + text_info->bg_color.blue) / 3;
@@ -1334,16 +1351,16 @@ vvas_overlay_gray_draw_text (Mat & img, VvasOverlayFrameInfo * pFrameInfo)
           text_info->text_font.font_color.green +
           text_info->text_font.font_color.blue) / 3;
 
-      for (int i=0; i<str_cnt; i++) {
+      for (int i = 0; i < str_cnt; i++) {
         txt_end = txt_start +
-        Point(text_size[i].width,text_size[i].height + base_line[i]);
+            Point (text_size[i].width, text_size[i].height + base_line[i]);
         if (text_info->apply_bg_color)
-          rectangle(img, txt_start, txt_end, Scalar(gray_val), FILLED, 1, 0);
+          rectangle (img, txt_start, txt_end, Scalar (gray_val), FILLED, 1, 0);
 
-        txt_start = txt_start + Point(0, text_size[i].height + 4);
-        putText(img, meta_str[i], txt_start, text_info->text_font.font_num,
-                 text_info->text_font.font_size, Scalar (gray_val_t), 1);
-        txt_start = txt_start + Point(0, (base_line[i] - 4));
+        txt_start = txt_start + Point (0, text_size[i].height + 4);
+        putText (img, meta_str[i], txt_start, text_info->text_font.font_num,
+            text_info->text_font.font_size, Scalar (gray_val_t), 1);
+        txt_start = txt_start + Point (0, (base_line[i] - 4));
       }
 
       head = head->next;
@@ -1652,21 +1669,34 @@ vvas_overlay_process_frame (VvasOverlayFrameInfo * pFrameInfo)
     case VVAS_VIDEO_FORMAT_RGB:
     case VVAS_VIDEO_FORMAT_BGR:{
       ret = vvas_overlay_rgb_draw (pFrameInfo, &info);
+      if (ret != VVAS_RET_SUCCESS) {
+        LOG_E ("failed to draw");
+        return ret;
+      }
     }
       break;
 
     case VVAS_VIDEO_FORMAT_Y_UV8_420:{
       ret = vvas_overlay_nv12_draw (pFrameInfo, &info);
+      if (ret != VVAS_RET_SUCCESS) {
+        LOG_E ("failed to draw");
+        return ret;
+      }
     }
       break;
 
     case VVAS_VIDEO_FORMAT_GRAY8:{
       ret = vvas_overlay_gray_draw (pFrameInfo, &info);
+      if (ret != VVAS_RET_SUCCESS) {
+        LOG_E ("failed to draw");
+        return ret;
+      }
     }
       break;
 
     default:{
       ret = VVAS_RET_INVALID_ARGS;
+      return ret;
     }
       break;
   }

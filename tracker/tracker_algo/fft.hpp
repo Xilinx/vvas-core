@@ -142,6 +142,7 @@ struct dft_options {
 	isInverse = false;
 	noPermute = false;
 	isComplex = false;
+	haveSSE3 = false;
 
 	dft_func = 0;
   }

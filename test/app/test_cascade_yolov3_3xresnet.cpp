@@ -612,12 +612,12 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf, int gl
     LOG_MESSAGE (LOG_LEVEL_DEBUG, gloglevel,
       "display_level is not set, so process all nodes at all levels");
   } else {
-    mc_conf->level = json_integer_value (val);
-    if (mc_conf->level < 0) {
+    if (json_integer_value (val) < 0) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, gloglevel,
         "display level should be greater than or equal to 0");
       goto error;
     }
+    mc_conf->level = json_integer_value (val);
   }
 
   val = json_object_get (config, "font-size");
@@ -701,6 +701,7 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf, int gl
 
     for (index = 0; index < mc_conf->allowed_classes_count; index++) {
       VvasFilterObjectInfo *allowed_class = (VvasFilterObjectInfo *) calloc (1, sizeof (VvasFilterObjectInfo));
+      mc_conf->allowed_classes[index] = allowed_class;
       json_t *classes;
 
       classes = json_array_get (karray, index);
@@ -745,7 +746,6 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf, int gl
       else
         allowed_class->do_mask = json_integer_value (val);
 
-      mc_conf->allowed_classes[index] = allowed_class;
     }
   }
 
@@ -755,6 +755,18 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf, int gl
 
 error:
   json_decref (root);
+  for (uint8_t i = 0; i < mc_conf->allowed_classes_count; i++) {
+    if (mc_conf->allowed_classes[i]) {
+      free (mc_conf->allowed_classes[i]);
+      mc_conf->allowed_classes[i] = NULL;
+    }
+  }
+
+  if (mc_conf->allowed_classes) {
+    free (mc_conf->allowed_classes);
+    mc_conf->allowed_classes = NULL;
+  }
+
   return false;
 }
 
@@ -1128,8 +1140,10 @@ vvas_app_destroy_module_contexts (VvasAppHandle * app_handle)
     free (app_handle->mc_cfg.allowed_labels);
   }
 
-  if (app_handle->mc_cfg.allowed_classes_count)
+  if (app_handle->mc_cfg.allowed_classes_count && app_handle->mc_cfg.allowed_classes) {
     free (app_handle->mc_cfg.allowed_classes);
+    app_handle->mc_cfg.allowed_classes = NULL;
+  } 
 
   if (app_handle->mc_handle)
     vvas_metaconvert_destroy (app_handle->mc_handle);

@@ -197,7 +197,7 @@ vvas_queue_clear_full (VvasQueue * vvas_queue, VvasQueueDestroyNotify free_func)
   }
 
   g_mutex_lock (&self->lock);
-  //g_queue_clear_full (self->queue, free_func);
+  g_queue_clear_full (self->queue, free_func);
   /* Entries from the queue are removed, lets notify about it to all the
    * waiting threads */
   g_cond_broadcast (&self->cond);
@@ -252,7 +252,7 @@ vvas_queue_get_length (VvasQueue * vvas_queue)
 }
 
 /**
- *  @fn void vvas_queue_for_each (VvasQueue * vvas_queue, VvasFunc func, void * user_data)
+ *  @fn void vvas_queue_for_each (VvasQueue * vvas_queue, VvasQueueFunc func, void * user_data)
  *  @param [in] vvas_queue  VvasQueue allocated using @ref vvas_queue_new
  *  @param [in] func        A callback function to be called for each element of the queue
  *  @return None
@@ -260,7 +260,7 @@ vvas_queue_get_length (VvasQueue * vvas_queue)
  *  @note   \p func should not modify the queue.
  */
 void
-vvas_queue_for_each (VvasQueue * vvas_queue, VvasFunc func, void *user_data)
+vvas_queue_for_each (VvasQueue * vvas_queue, VvasQueueFunc func, void *user_data)
 {
   VvasQueuePrivate *self = (VvasQueuePrivate *) vvas_queue;
 
@@ -376,7 +376,7 @@ vvas_queue_enqueue_noblock (VvasQueue * vvas_queue, void *data)
 void *
 vvas_queue_dequeue (VvasQueue * vvas_queue)
 {
-  VvasQueuePrivate *self = self = (VvasQueuePrivate *) vvas_queue;
+  VvasQueuePrivate *self = (VvasQueuePrivate *) vvas_queue;
   uint32_t queue_length;
   void *data = NULL;
 

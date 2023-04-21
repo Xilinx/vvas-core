@@ -255,14 +255,13 @@ correlation_filter::extract_feature (Mat_img frame, fMat * FeaturesMap,
     rsz_z.height = obj_size.height;
 
 #ifdef TRACKER_USE_SIMD_OPTIMIZATION
-    SimdResizeBilinear (z.data, z.width, z.height, z.width, rsz_z.data,
+    SimdResizeBilinear (z.data[0], z.width, z.height, z.width, rsz_z.data[0],
         rsz_z.width, rsz_z.height, rsz_z.width, 1);
 #else
-    resize_bilinear_c (z.data, z.width, z.height, z.width, rsz_z.data,
+    resize_bilinear_c (z.data[0], z.width, z.height, z.width, rsz_z.data[0],
         rsz_z.width, rsz_z.height, rsz_z.width, 1);
 #endif
   }
-
   else
     rsz_z = z;
 
@@ -271,15 +270,15 @@ correlation_filter::extract_feature (Mat_img frame, fMat * FeaturesMap,
     fet_len_y = rsz_z.height / cell_size;
 
 #ifdef TRACKER_USE_SIMD_OPTIMIZATION
-    SimdHogExtractFeatures (rsz_z.data, rsz_z.width, rsz_z.width, rsz_z.height,
-        hog_feat, cell_size, fet_length);
+    SimdHogExtractFeatures (rsz_z.data[0], rsz_z.width, rsz_z.width,
+        rsz_z.height, hog_feat, cell_size, fet_length);
 #else
-    HOG_extract_features_c (rsz_z.data, rsz_z.width, rsz_z.width, rsz_z.height,
-        hog_feat, cell_size, fet_length);
+    HOG_extract_features_c (rsz_z.data[0], rsz_z.width, rsz_z.width,
+        rsz_z.height, hog_feat, cell_size, fet_length);
 #endif
 
-    fet_vec_size[0] = fet_len_x;
-    fet_vec_size[1] = fet_len_y;
+    fet_vec_size[0] = fet_len_y;
+    fet_vec_size[1] = fet_len_x;
     fet_vec_size[2] = fet_length;
 
     FeaturesMap->width = fet_len_x * fet_len_y;
@@ -298,7 +297,6 @@ correlation_filter::extract_feature (Mat_img frame, fMat * FeaturesMap,
         fptr++;
       }
   }
-
   else {
     fet_vec_size[0] = z.height;
     fet_vec_size[1] = z.width;
@@ -368,7 +366,7 @@ void
 correlation_filter::correlation_filtering (fMat x1, fMat x2, float sum_sqr,
     fMat * res, bool auto_corr)
 {
-  fMat tmp_x1, corr, tmp_corr, acc_corr;
+  fMat tmp_x1 = { 0 }, corr = { 0 }, tmp_corr = { 0 }, acc_corr = { 0 };
   fMat tx1, tx2;
   int size, size2;
 
@@ -558,7 +556,7 @@ correlation_filter::correlation_filtering (fMat x1, fMat x2, float sum_sqr,
 
 // Detect object in the current frame.
 Point2f
-correlation_filter::locate_new_position (fMat z, fMat x, float sum_sqr,
+    correlation_filter::locate_new_position (fMat z, fMat x, float sum_sqr,
     float &peak_value)
 {
   fMat kernel_corr, cong, response, tmp;
@@ -603,14 +601,6 @@ correlation_filter::locate_new_position (fMat z, fMat x, float sum_sqr,
 
   p.x = (float) pix;
   p.y = (float) piy;
-
-  /*if (pix > 0 && pix < width - 1) {
-     p.x += sub_pix_estimation(response.data[(piy * width + pix - 1)<<1], peak_value, response.data[(piy*width + pix + 1)<<1]);
-     }
-
-     if (piy > 0 && piy < response.height - 1) {
-     p.y += sub_pix_estimation(response.data[((piy - 1)*width + pix)<<1], peak_value, response.data[((piy + 1)*width + pix)<<1]);
-     } */
 
   p.x -= (width) / 2;
   p.y -= (response.height) / 2;
@@ -686,9 +676,9 @@ correlation_filter::init_cf (track_config tconfig, Rectf bbox_new,
 
   fft_size = 1352;              //26 * 26 * 2
   head_ptr = calloc (size, 1);
-  z.data = (unsigned char *) head_ptr;
-  rsz_z.data = z.data + roi_size;
-  obj_tmpl.data = (float *) (rsz_z.data + 10816);       //104*104
+  z.data[0] = (unsigned char *) head_ptr;
+  rsz_z.data[0] = z.data[0] + roi_size;
+  obj_tmpl.data = (float *) (rsz_z.data[0] + 10816);    //104*104
   cur_tmpl.data = obj_tmpl.data + 17856;        //24*24*31
   gau_wt.data = cur_tmpl.data + 17856;
   alphaf.data = gau_wt.data + fft_size; //24*24*2
@@ -763,11 +753,11 @@ float
 correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
     float conf_score)
 {
-  if (bbox.x < 0 ) {
+  if (bbox.x < 0) {
     bbox.width = bbox.width + bbox.x;
     bbox.x = 0;
   }
-  if (bbox.y < 0 ) {
+  if (bbox.y < 0) {
     bbox.height = bbox.height + bbox.y;
     bbox.y = 0;
   }
@@ -777,7 +767,7 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
     bbox.height = image.img_height - bbox.y;
 
   if (bbox.width < min_obj_width || bbox.width > max_obj_width
-    || bbox.height < min_obj_height || bbox.height > max_obj_height)
+      || bbox.height < min_obj_height || bbox.height > max_obj_height)
     return 0;
 
   float cx = bbox.x + bbox.width / 2.0f;
@@ -828,7 +818,6 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
   free (cfg);
 #endif
   Point2f res = locate_new_position (prev_fft, cur_tmpl, fsum, peak_value);
-
   if (scaling != 1) {
     // locating at lower scale factor
     float new_peak_value;
@@ -837,7 +826,6 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
       //PRE_FFT
       Point2f new_res =
           locate_new_position (prev_fft, cur_tmpl, fsum, new_peak_value);
-
       if (CORR_SCALE_WT * new_peak_value > peak_value) {
         res = new_res;
         peak_value = new_peak_value;
@@ -852,7 +840,6 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
       //PRE_FFT
       Point2f new_res =
           locate_new_position (prev_fft, cur_tmpl, fsum, new_peak_value);
-
       if (CORR_SCALE_WT * new_peak_value > peak_value) {
         res = new_res;
         peak_value = new_peak_value;
@@ -869,11 +856,11 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
     bbox.y =
         cy - bbox.height / 2.0f + ((float) res.y * cell_size * scale_factor);
 
-    if (bbox.x < 0 ) {
+    if (bbox.x < 0) {
       bbox.width = bbox.width + bbox.x;
       bbox.x = 0;
     }
-    if (bbox.y < 0 ) {
+    if (bbox.y < 0) {
       bbox.height = bbox.height + bbox.y;
       bbox.y = 0;
     }
@@ -895,6 +882,5 @@ correlation_filter::update_position (Mat_img image, Rectf * bbox_out,
     bbox_out->width = bbox.width;
     bbox_out->height = bbox.height;
   }
-
   return peak_value;
 }

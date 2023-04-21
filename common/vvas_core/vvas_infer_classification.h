@@ -17,7 +17,8 @@
  */
 
 /**
- *  DOC: Contains data type and API declarations for Infer classification operations
+ * DOC: VVAS Infer Classification APIs
+ * This file contains data type and API declarations for Infer classification operations.
  */
 
 #ifndef __VVAS_INFER_CLASSIFICATION_H__
@@ -50,7 +51,7 @@ typedef struct {
  * @class_id: The numerical id associated to the assigned class
  * @class_prob: The resulting probability of the assigned class. Typically ranges between 0 and 1
  * @class_label: The label associated to this class or NULL if not available
- * @num_classes: The total amount of classes of the entire prediction
+ * @num_classes: The total number of classes of the entire prediction
  * @probabilities: The entire array of probabilities of the prediction
  * @labels: The entire array of labels of the prediction. NULL if not available
  * @label_color: The color of labels
@@ -70,13 +71,13 @@ typedef struct {
  *  vvas_inferclassification_new () - This function  allocates new memory for @VvasInferClassification
  *
  *  Return:
- *  * On Success returns address of the new object instance of @VvasInferClassification.
+ *  * On Success returns address of the new object of @VvasInferClassification.
  *  * On Failure returns NULL
  */
 VvasInferClassification * vvas_inferclassification_new(void);
 
 /**
- *  vvas_inferclassification_free () - This function deallocates VvasInferClassification instance
+ *  vvas_inferclassification_free () - This function deallocates memory associated with VvasInferClassification object
  *
  *  @self: Address of the object handle to be freed
  *
@@ -90,7 +91,7 @@ void vvas_inferclassification_free(VvasInferClassification *self);
  *  @self: Address of context handle
  *
  *  Return: 
- *  * On Success returns address of the new object instance of @VvasInferClassification.
+ *  * On Success returns address of the new object of @VvasInferClassification.
  *  * On Failure returns NULL
  */
 VvasInferClassification* vvas_inferclassification_copy(const VvasInferClassification *self);

@@ -94,7 +94,7 @@ vvas_buffer_pool_create (VvasContext * vvas_ctx,
 
   self = (VvasBufferPoolPrivate *) calloc (1, sizeof (VvasBufferPoolPrivate));
   if (!self) {
-    LOG_ERROR (self->log_level, "Failed to allocate memory for buffer pool instance");
+    LOG_ERROR (DEFAULT_VVAS_LOG_LEVEL, "Failed to allocate memory for buffer pool instance");
     return NULL;
   }
 

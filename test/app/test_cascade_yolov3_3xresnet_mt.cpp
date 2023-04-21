@@ -71,10 +71,11 @@ typedef int64_t VvasClockTimeDiff;
  *
  */
 static VvasClockTime
-vvas_get_clocktime() {
+vvas_get_clocktime ()
+{
   struct timespec now;
   clock_gettime (CLOCK_MONOTONIC, &now);
-  return TIME_IN_NS(now);
+  return TIME_IN_NS (now);
 }
 
 /******************************************************/
@@ -90,7 +91,7 @@ vvas_get_clocktime() {
 #define DEFUNNEL_THREAD_NAME        "DEFUNNEL"
 #define LAUNCHER_THREAD_NAME        "Launcher"
 
-#define FUNNEL_WAIT_TIME    (36)  /* 36 ms in us, assuming 30 FPS */
+#define FUNNEL_WAIT_TIME    (36)        /* 36 ms in us, assuming 30 FPS */
 
 #define MAX_STREAMS_PER_PIPELINE    4
 #define YOLO_LEVEL                  1
@@ -98,7 +99,7 @@ vvas_get_clocktime() {
 
 #define V70_DEVICE_INDEX    0
 
-#define FPS_DISPLAY_INTERVAL    5 // in second
+#define FPS_DISPLAY_INTERVAL    5       // in second
 
 /*
  *  @brief Time to wait in milliseconds before pushing current batch
@@ -130,7 +131,7 @@ static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define DEFAULT_RADIUS 3
 #define DEFAULT_MASK_LEVEL 0
 
-#define DEFAULT_FPS_DISPLAY_INTERVAL    5  //In seconds
+#define DEFAULT_FPS_DISPLAY_INTERVAL    5       //In seconds
 #define DEFAULT_ADDITIONAL_DEC_BUFFERS  14
 #define DEFAULT_STREAM_REPREAT_COUNT    1
 
@@ -178,7 +179,8 @@ typedef struct
   uint8_t read_again;
 } ParserContext;
 
-typedef enum {
+typedef enum
+{
   VVAS_EOS_NONE,
   VVAS_STREAM_EOS,
   VVAS_PIPELINE_EOS,
@@ -277,6 +279,7 @@ static VvasLogLevel glog_level = LOG_LEVEL_WARNING;
 static uint32_t stream_repeat_count = DEFAULT_STREAM_REPREAT_COUNT;
 static bool is_interrupt = false;
 static VvasClockTime app_start_time = 0;
+static int32_t dev_idx = V70_DEVICE_INDEX;
 
 static uint16_t additional_decoder_buffers = DEFAULT_ADDITIONAL_DEC_BUFFERS;
 static uint32_t fps_display_interval = DEFAULT_FPS_DISPLAY_INTERVAL;
@@ -312,46 +315,46 @@ static VvasList *input_files = NULL;
  *
  */
 static void
-vvas_app_logger (VvasLogLevel level, const char * func_name,
-    int line_num, const char * format, ...)
+vvas_app_logger (VvasLogLevel level, const char *func_name,
+    int line_num, const char *format, ...)
 {
   if (level <= glog_level) {
     char *str = NULL;
-    char thread_name[16] = {0};
+    char thread_name[16] = { 0 };
     va_list v_args;
 
     switch (level) {
       case LOG_LEVEL_ERROR:
-        str = (char*)"ERROR";
+        str = (char *) "ERROR";
         break;
       case LOG_LEVEL_WARNING:
-        str = (char*)"WARNING";
+        str = (char *) "WARNING";
         break;
       case LOG_LEVEL_INFO:
-        str = (char*)"INFO";
+        str = (char *) "INFO";
         break;
       default:
       case LOG_LEVEL_DEBUG:
-        str = (char*)"DEBUG";
+        str = (char *) "DEBUG";
         break;
     }
 
-    va_start(v_args, format);
+    va_start (v_args, format);
     Thread thread_id;
-    thread_id = pthread_self();
+    thread_id = pthread_self ();
     pthread_getname_np (thread_id, thread_name, 16);
 
     pthread_mutex_lock (&print_mutex);
-    VvasClockTime now = vvas_get_clocktime();
+    VvasClockTime now = vvas_get_clocktime ();
     VvasClockTimeDiff elapsed = now - app_start_time;
-    printf (VVAS_TIME_FORMAT, VVAS_TIME_ARGS(elapsed));
-    printf(" [%s:%d] 0x%0lx %s %s: ", func_name, line_num,
+    printf (VVAS_TIME_FORMAT, VVAS_TIME_ARGS (elapsed));
+    printf (" [%s:%d] 0x%0lx %s %s: ", func_name, line_num,
         thread_id, thread_name, str);
-    vprintf(format, v_args);
-    printf("\n");
+    vprintf (format, v_args);
+    printf ("\n");
     pthread_mutex_unlock (&print_mutex);
 
-    va_end(v_args);
+    va_end (v_args);
   }
 }
 
@@ -424,11 +427,11 @@ get_video_codec_type (const char *file_path)
 {
   VvasCodecType codec_type;;
 
-  if (strstr(file_path, ".h264") || strstr(file_path, ".264") ||
-      strstr(file_path, ".avc")) {
+  if (strstr (file_path, ".h264") || strstr (file_path, ".264") ||
+      strstr (file_path, ".avc")) {
     codec_type = VVAS_CODEC_H264;
-  } else if (strstr(file_path, ".h265") || strstr(file_path, ".hevc") ||
-      strstr(file_path, ".265")) {
+  } else if (strstr (file_path, ".h265") || strstr (file_path, ".hevc") ||
+      strstr (file_path, ".265")) {
     codec_type = VVAS_CODEC_H265;
   } else {
     codec_type = VVAS_CODEC_UNKNOWN;
@@ -462,7 +465,7 @@ vvas_app_parse_master_json (const char *mjson_path)
   if (json_is_integer (value)) {
     glog_level = (VvasLogLevel) json_integer_value (value);
   } else {
-    VVAS_APP_ERROR_LOG ( "log-level is not set, considering it is as WARNING");
+    VVAS_APP_ERROR_LOG ("log-level is not set, considering it is as WARNING");
   }
 
   value = json_object_get (root, "yolov3-config-path");
@@ -471,7 +474,7 @@ vvas_app_parse_master_json (const char *mjson_path)
     VVAS_APP_DEBUG_LOG ("yolov3-config-path = %s",
         (char *) json_string_value (value));
   } else {
-    VVAS_APP_ERROR_LOG ( "level1-config-path is not of string type or "
+    VVAS_APP_ERROR_LOG ("level1-config-path is not of string type or "
         "not present");
     goto error;
   }
@@ -479,7 +482,7 @@ vvas_app_parse_master_json (const char *mjson_path)
   value = json_object_get (root, "resnet18-carmake-config-path");
   if (json_is_string (value)) {
     car_make_json_path = strdup ((char *) json_string_value (value));
-    VVAS_APP_DEBUG_LOG ( "resnet18-carmake-config-path = %s",
+    VVAS_APP_DEBUG_LOG ("resnet18-carmake-config-path = %s",
         (char *) json_string_value (value));
   } else {
     VVAS_APP_ERROR_LOG ("resnet18-carmake-config-path is not of string type "
@@ -515,7 +518,7 @@ vvas_app_parse_master_json (const char *mjson_path)
     VVAS_APP_DEBUG_LOG ("metaconvert-config-path = %s",
         (char *) json_string_value (value));
   } else {
-    VVAS_APP_ERROR_LOG ( "metaconvert-config-path is not of string type or "
+    VVAS_APP_ERROR_LOG ("metaconvert-config-path is not of string type or "
         "not present");
     goto error;
   }
@@ -526,23 +529,38 @@ vvas_app_parse_master_json (const char *mjson_path)
     VVAS_APP_DEBUG_LOG ("xclbin-location = %s",
         (char *) json_string_value (value));
   } else {
-    VVAS_APP_ERROR_LOG ( "xclbin-location is not set");
+    VVAS_APP_ERROR_LOG ("xclbin-location is not set");
     goto error;
   }
+
+  value = json_object_get (root, "dev-idx");
+  if (json_is_integer (value)) {
+    dev_idx = json_integer_value (value);
+    if (dev_idx < 0) {
+      VVAS_APP_WARNING_LOG ("Device Index can't be negative: %d, Taking default",
+          dev_idx);
+      dev_idx = V70_DEVICE_INDEX;
+    }
+  } else {
+    VVAS_APP_WARNING_LOG ("Device index is not set, taking default: %d",
+        dev_idx);
+  }
+
+  VVAS_APP_DEBUG_LOG ("Device Index = %d", dev_idx);
 
   value = json_object_get (root, "sink-type");
   if (json_is_integer (value)) {
     gsink_type = (VvasSinkType) json_integer_value (value);
     VVAS_APP_DEBUG_LOG ("sink-type = %s", gsink_type ? "filesink" : "fakesink");
   } else {
-    VVAS_APP_ERROR_LOG ( "sink-type is not set, considering fakesink");
+    VVAS_APP_ERROR_LOG ("sink-type is not set, considering fakesink");
   }
 
   value = json_object_get (root, "additional-decoder-buffers");
   if (json_is_integer (value)) {
     additional_decoder_buffers = json_integer_value (value);
   } else {
-    VVAS_APP_WARNING_LOG ( "additional-decoder-buffers is not set, "
+    VVAS_APP_WARNING_LOG ("additional-decoder-buffers is not set, "
         "taking default value: %u", DEFAULT_ADDITIONAL_DEC_BUFFERS);
   }
 
@@ -560,7 +578,7 @@ vvas_app_parse_master_json (const char *mjson_path)
     batch_timeout = json_integer_value (value);
     VVAS_APP_DEBUG_LOG ("batch-timeout: %u milliseconds", batch_timeout);
   } else {
-    VVAS_APP_WARNING_LOG ( "batch-timeout is not set, "
+    VVAS_APP_WARNING_LOG ("batch-timeout is not set, "
         "taking default value: %u", DEFAULT_BATCH_SUBMIT_TIMEOUT);
   }
 
@@ -568,7 +586,8 @@ vvas_app_parse_master_json (const char *mjson_path)
   if (json_is_integer (value)) {
     fps_display_interval = json_integer_value (value);
     if (!fps_display_interval) {
-      VVAS_APP_WARNING_LOG ("fps-display-interval can't be zero, taking default");
+      VVAS_APP_WARNING_LOG
+          ("fps-display-interval can't be zero, taking default");
       fps_display_interval = DEFAULT_FPS_DISPLAY_INTERVAL;
     }
   }
@@ -580,7 +599,7 @@ vvas_app_parse_master_json (const char *mjson_path)
   if (json_is_integer (value)) {
     stream_repeat_count = (VvasLogLevel) json_integer_value (value);
   } else {
-    VVAS_APP_ERROR_LOG ( "repeat-count is not set, considering it is as %u",
+    VVAS_APP_ERROR_LOG ("repeat-count is not set, considering it is as %u",
         DEFAULT_STREAM_REPREAT_COUNT);
   }
 
@@ -598,7 +617,7 @@ vvas_app_parse_master_json (const char *mjson_path)
 
   for (size_t i = 0; i < input_files_size; i++) {
     json_t *array_value = json_array_get (value, i);
-    char * input_file = (char *) json_string_value (array_value);
+    char *input_file = (char *) json_string_value (array_value);
     /* Check read access to this file */
     if (access (input_file, R_OK)) {
       /* Can't read this file */
@@ -619,7 +638,7 @@ vvas_app_parse_master_json (const char *mjson_path)
     }
 
     VVAS_APP_DEBUG_LOG ("Input_file: %s", input_file);
-    input_files = vvas_list_append (input_files, strdup(input_file));
+    input_files = vvas_list_append (input_files, strdup (input_file));
     actual_number_of_files++;
   }
 
@@ -665,10 +684,6 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
         "all levels");
   } else {
     mc_conf->level = json_integer_value (val);
-    if (mc_conf->level < 0) {
-      VVAS_APP_ERROR_LOG ( "display level should be greater than or equal to 0");
-      goto error;
-    }
   }
 
   val = json_object_get (config, "font-size");
@@ -682,7 +697,7 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
     mc_conf->font_type = DEFAULT_FONT;
   else {
     index = json_integer_value (val);
-    if (index >= 0 && index <= 5)
+    if (index <= 5)
       mc_conf->font_type = (VvasFontType) index;
     else {
       VVAS_APP_ERROR_LOG ("font value out of range. Setting default");
@@ -740,8 +755,8 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
   /* get classes array */
   karray = json_object_get (config, "classes");
   if (!karray) {
-    VVAS_APP_DEBUG_LOG (
-        "classification filtering not found, allowing all classes");
+    VVAS_APP_DEBUG_LOG
+        ("classification filtering not found, allowing all classes");
     mc_conf->allowed_classes_count = 0;
   } else {
     if (!json_is_array (karray)) {
@@ -756,6 +771,7 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
     for (index = 0; index < mc_conf->allowed_classes_count; index++) {
       VvasFilterObjectInfo *allowed_class =
           (VvasFilterObjectInfo *) calloc (1, sizeof (VvasFilterObjectInfo));
+      mc_conf->allowed_classes[index] = allowed_class;
       json_t *classes;
 
       classes = json_array_get (karray, index);
@@ -772,7 +788,7 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
         strncpy (allowed_class->name,
             (char *) json_string_value (val), META_CONVERT_MAX_STR_LENGTH - 1);
         allowed_class->name[META_CONVERT_MAX_STR_LENGTH - 1] = '\0';
-        VVAS_APP_DEBUG_LOG ( "name %s", allowed_class->name);
+        VVAS_APP_DEBUG_LOG ("name %s", allowed_class->name);
       }
 
       val = json_object_get (classes, "green");
@@ -799,7 +815,6 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
       else
         allowed_class->do_mask = json_integer_value (val);
 
-      mc_conf->allowed_classes[index] = allowed_class;
     }
   }
 
@@ -808,6 +823,16 @@ parse_metaconvert_json (char *json_file, VvasMetaConvertConfig * mc_conf)
   return true;
 
 error:
+  if (mc_conf->allowed_classes) {
+    if (mc_conf->allowed_classes_count) {
+      for (index = 0; index < mc_conf->allowed_classes_count; index++) {
+        free (mc_conf->allowed_classes[index]);
+        mc_conf->allowed_classes[index] = NULL;
+      }
+    }
+    free (mc_conf->allowed_classes);
+    mc_conf->allowed_classes = NULL;
+  }
   json_decref (root);
   return false;
 }
@@ -839,8 +864,7 @@ get_num_planes (VvasVideoFormat fmt)
       num_planes = 3;
       break;
     default:
-      VVAS_APP_ERROR_LOG (
-          "Unsupported video format : %d", fmt);
+      VVAS_APP_ERROR_LOG ("Unsupported video format : %d", fmt);
   }
   return num_planes;
 }
@@ -928,7 +952,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
 
   root = json_load_file (json_file, JSON_DECODE_ANY, &error);
   if (!root) {
-    VVAS_APP_ERROR_LOG ( "failed to load json file(%s) reason %s",
+    VVAS_APP_ERROR_LOG ("failed to load json file(%s) reason %s",
         json_file, error.text);
     goto error;
   }
@@ -948,8 +972,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
   value = json_object_get (kconfig, "model-path");
   if (json_is_string (value)) {
     dpu_conf->model_path = strdup ((char *) json_string_value (value));
-    VVAS_APP_DEBUG_LOG ( "model-path: %s",
-        (char *) json_string_value (value));
+    VVAS_APP_DEBUG_LOG ("model-path: %s", (char *) json_string_value (value));
   } else {
     VVAS_APP_ERROR_LOG ("model-path is not of string type");
     goto error;
@@ -958,8 +981,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
   value = json_object_get (kconfig, "model-name");
   if (json_is_string (value)) {
     dpu_conf->model_name = strdup ((char *) json_string_value (value));
-    VVAS_APP_DEBUG_LOG ( "model-name: %s",
-        (char *) json_string_value (value));
+    VVAS_APP_DEBUG_LOG ("model-name: %s", (char *) json_string_value (value));
   } else {
     VVAS_APP_ERROR_LOG ("model-name is not of string type");
     goto error;
@@ -983,8 +1005,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
   value = json_object_get (kconfig, "model-class");
   if (json_is_string (value)) {
     dpu_conf->modelclass = strdup ((char *) json_string_value (value));
-    VVAS_APP_DEBUG_LOG ( "model-class: %s",
-        (char *) json_string_value (value));
+    VVAS_APP_DEBUG_LOG ("model-class: %s", (char *) json_string_value (value));
   } else {
     VVAS_APP_ERROR_LOG ("model-class is not of string type");
     goto error;
@@ -993,13 +1014,12 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
   value = json_object_get (kconfig, "seg-out-format");
   if (json_is_integer (value)) {
     dpu_conf->segoutfmt = VvasVideoFormat (json_integer_value (value));
-    VVAS_APP_DEBUG_LOG ( "seg-out-fmt: %d",
-        dpu_conf->segoutfmt);
+    VVAS_APP_DEBUG_LOG ("seg-out-fmt: %d", dpu_conf->segoutfmt);
   }
 
   value = json_object_get (kconfig, "batch-size");
   if (!value || !json_is_integer (value)) {
-    VVAS_APP_DEBUG_LOG ( "Taking batch-size as 1");
+    VVAS_APP_DEBUG_LOG ("Taking batch-size as 1");
     dpu_conf->batch_size = 1;
   } else {
     dpu_conf->batch_size = json_integer_value (value);
@@ -1007,8 +1027,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
 
   value = json_object_get (kconfig, "vitis-ai-preprocess");
   if (!value || !json_is_boolean (value)) {
-    VVAS_APP_DEBUG_LOG (
-        "Setting need_preprocess as FALSE");
+    VVAS_APP_DEBUG_LOG ("Setting need_preprocess as FALSE");
     dpu_conf->need_preprocess = false;
   } else {
     dpu_conf->need_preprocess = json_boolean_value (value);
@@ -1016,8 +1035,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
 
   value = json_object_get (kconfig, "performance-test");
   if (!value || !json_is_boolean (value)) {
-    VVAS_APP_DEBUG_LOG (
-        "Setting performance_test as TRUE");
+    VVAS_APP_DEBUG_LOG ("Setting performance_test as TRUE");
     dpu_conf->performance_test = true;
   } else {
     dpu_conf->performance_test = json_boolean_value (value);
@@ -1025,28 +1043,25 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
 
   value = json_object_get (kconfig, "max-objects");
   if (!value || !json_is_integer (value)) {
-    VVAS_APP_DEBUG_LOG ( "Setting max-objects as %d",
-        UINT_MAX);
+    VVAS_APP_DEBUG_LOG ("Setting max-objects as %d", UINT_MAX);
     dpu_conf->objs_detection_max = UINT_MAX;
   } else {
     dpu_conf->objs_detection_max = json_integer_value (value);
-    VVAS_APP_DEBUG_LOG ( "Setting max-objects as %d",
+    VVAS_APP_DEBUG_LOG ("Setting max-objects as %d",
         dpu_conf->objs_detection_max);
   }
 
   value = json_object_get (kconfig, "segoutfactor");
   if (json_is_integer (value)) {
     dpu_conf->segoutfactor = json_integer_value (value);;
-    VVAS_APP_DEBUG_LOG ( "Setting segoutfactor as %d",
-        dpu_conf->segoutfactor);
+    VVAS_APP_DEBUG_LOG ("Setting segoutfactor as %d", dpu_conf->segoutfactor);
   }
 
   value = json_object_get (kconfig, "float-feature");
   if (json_is_boolean (value)) {
     dpu_conf->float_feature = json_boolean_value (value);
     dpu_conf->float_feature = json_boolean_value (value);
-    VVAS_APP_DEBUG_LOG ( "Setting float-feature as %d",
-        dpu_conf->float_feature);
+    VVAS_APP_DEBUG_LOG ("Setting float-feature as %d", dpu_conf->float_feature);
   }
 
   value = json_object_get (kconfig, "filter-labels");
@@ -1058,7 +1073,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
       if (json_is_string (label)) {
         dpu_conf->filter_labels[i] =
             strdup ((char *) json_string_value (label));
-        VVAS_APP_DEBUG_LOG ( "Adding filter label %s",
+        VVAS_APP_DEBUG_LOG ("Adding filter label %s",
             dpu_conf->filter_labels[i]);
       } else {
         dpu_conf->filter_labels[i] = NULL;
@@ -1067,7 +1082,7 @@ parse_dpu_json (char *json_file, VvasDpuInferConf * dpu_conf, int gloglevel)
     }
   } else {
     dpu_conf->num_filter_labels = 0;
-    VVAS_APP_DEBUG_LOG ( "No filter labels given");
+    VVAS_APP_DEBUG_LOG ("No filter labels given");
   }
 
   json_decref (root);
@@ -1099,25 +1114,25 @@ vvas_app_prepare_dpu_configuration ()
 
   /* parse user json files */
   if (!parse_dpu_json (yolov3_json_path, &yolov3_config, glog_level)) {
-    VVAS_APP_ERROR_LOG ( "Error parsing json file");
+    VVAS_APP_ERROR_LOG ("Error parsing json file");
     goto error;
   }
 
   if (!parse_dpu_json (car_make_json_path, &resnet18_car_make_config,
-      glog_level)) {
-    VVAS_APP_ERROR_LOG ( "Error parsing json file");
+          glog_level)) {
+    VVAS_APP_ERROR_LOG ("Error parsing json file");
     goto error;
   }
 
   if (!parse_dpu_json (car_type_json_path, &resnet18_car_type_config,
-      glog_level)) {
-    VVAS_APP_ERROR_LOG ( "Error parsing json file");
+          glog_level)) {
+    VVAS_APP_ERROR_LOG ("Error parsing json file");
     goto error;
   }
 
   if (!parse_dpu_json (car_color_json_path, &resnet18_car_color_config,
-      glog_level)) {
-    VVAS_APP_ERROR_LOG ( "Error parsing json file");
+          glog_level)) {
+    VVAS_APP_ERROR_LOG ("Error parsing json file");
     goto error;
   }
 
@@ -1126,7 +1141,7 @@ vvas_app_prepare_dpu_configuration ()
   /* create Yolov3 handle */
   yolov3_handle = vvas_dpuinfer_create (&yolov3_config, LOG_LEVEL_WARNING);
   if (!yolov3_handle) {
-    VVAS_APP_ERROR_LOG ( "failed to create yolov3 handle");
+    VVAS_APP_ERROR_LOG ("failed to create yolov3 handle");
     goto error;
   }
 
@@ -1138,17 +1153,16 @@ vvas_app_prepare_dpu_configuration ()
   }
 
   if (yolov3_config.batch_size > yolov3_model_requirement.batch_size) {
-    VVAS_APP_ERROR_LOG ( "YoloV3 batch size configured [%u] is "
+    VVAS_APP_ERROR_LOG ("YoloV3 batch size configured [%u] is "
         "greater than the supported by the model [%u]",
-        yolov3_config.batch_size,
-        yolov3_model_requirement.batch_size);
+        yolov3_config.batch_size, yolov3_model_requirement.batch_size);
     goto error;
   }
 
   resnet18_handle = vvas_dpuinfer_create (&resnet18_car_make_config,
       LOG_LEVEL_WARNING);
   if (!resnet18_handle) {
-    VVAS_APP_ERROR_LOG ( "failed to create yolov3 handle");
+    VVAS_APP_ERROR_LOG ("failed to create yolov3 handle");
     goto error;
   }
 
@@ -1161,15 +1175,15 @@ vvas_app_prepare_dpu_configuration ()
   }
 
   if (resnet18_car_make_config.batch_size >
-        resnet18_make_type_color_req.batch_size) {
-    VVAS_APP_ERROR_LOG ( "Resnet18 Car Make batch size configured [%u] is "
+      resnet18_make_type_color_req.batch_size) {
+    VVAS_APP_ERROR_LOG ("Resnet18 Car Make batch size configured [%u] is "
         "greater than the supported by the model [%u]",
         resnet18_car_make_config.batch_size,
         resnet18_make_type_color_req.batch_size);
     goto error;
   }
 
-  VVAS_APP_DEBUG_LOG ( "Yolov3 Requirements: "
+  VVAS_APP_DEBUG_LOG ("Yolov3 Requirements: "
       "Resolution: %dx%d, batch_size: %d, mean: %f,%f,%f, "
       "scale: %f,%f,%f, format: %d, bacth-size: %hhu, need-preprocess: %d",
       yolov3_model_requirement.model_width,
@@ -1180,14 +1194,15 @@ vvas_app_prepare_dpu_configuration ()
       yolov3_model_requirement.scale_b, yolov3_config.model_format,
       yolov3_config.batch_size, yolov3_config.need_preprocess);
 
-  VVAS_APP_DEBUG_LOG ( "Resnet18 Car Make, type and color Requirements: "
+  VVAS_APP_DEBUG_LOG ("Resnet18 Car Make, type and color Requirements: "
       "Resolution: %dx%d, batch_size: %d, mean: %f,%f,%f, "
       "scale: %f,%f,%f, format: %d, batch-size: %hhu, need-preprocess: %d",
       resnet18_make_type_color_req.model_width,
       resnet18_make_type_color_req.model_height,
-      resnet18_make_type_color_req.batch_size, resnet18_make_type_color_req.mean_r,
-      resnet18_make_type_color_req.mean_g, resnet18_make_type_color_req.mean_b,
-      resnet18_make_type_color_req.scale_r, resnet18_make_type_color_req.scale_g,
+      resnet18_make_type_color_req.batch_size,
+      resnet18_make_type_color_req.mean_r, resnet18_make_type_color_req.mean_g,
+      resnet18_make_type_color_req.mean_b, resnet18_make_type_color_req.scale_r,
+      resnet18_make_type_color_req.scale_g,
       resnet18_make_type_color_req.scale_b,
       resnet18_car_make_config.model_format,
       resnet18_car_make_config.batch_size,
@@ -1223,10 +1238,9 @@ static bool
 vvas_app_create_thread (char *thread_name, thread_function thread_routine,
     Thread * thrd, void *thread_args)
 {
-  VVAS_APP_DEBUG_LOG ( "Starting %s Thread", thread_name);
+  VVAS_APP_DEBUG_LOG ("Starting %s Thread", thread_name);
   if (pthread_create (thrd, NULL, thread_routine, thread_args)) {
-    VVAS_APP_ERROR_LOG ( "Couldn't create %s thread",
-        thread_name);
+    VVAS_APP_ERROR_LOG ("Couldn't create %s thread", thread_name);
     return false;
   }
 
@@ -1260,12 +1274,12 @@ vvas_app_write_output (VvasVideoFrame * output_frame, FILE * outfp)
   vret =
       vvas_video_frame_map (output_frame, VVAS_DATA_MAP_READ, &out_vmap_info);
   if (VVAS_IS_ERROR (vret)) {
-    VVAS_APP_ERROR_LOG ( "failed map output frame");
+    VVAS_APP_ERROR_LOG ("failed map output frame");
     return VVAS_RET_ERROR;
   }
 
   if (VVAS_VIDEO_FORMAT_Y_UV8_420 == out_vmap_info.fmt) {
-    /* NV12 video frame*/
+    /* NV12 video frame */
     for (idx = 0; idx < out_vmap_info.height; idx++) {
       fwrite (out_vmap_info.planes[0].data + offset, 1, out_vmap_info.width,
           outfp);
@@ -1311,7 +1325,7 @@ vvas_app_write_output (VvasVideoFrame * output_frame, FILE * outfp)
 static VvasReturnType
 vvas_app_get_es_frame (ParserContext * parser_ctx, FILE * infp,
     VvasMemory * es_buf, VvasMemoryMapInfo * es_buf_info,
-    VvasMemory ** au_frame, VvasDecoderInCfg ** incfg, bool * is_eos)
+    VvasMemory ** au_frame, VvasDecoderInCfg ** incfg, bool *is_eos)
 {
   VvasReturnType vret = VVAS_RET_SUCCESS;
   size_t valid_es_size = DEFAULT_READ_SIZE;
@@ -1330,8 +1344,7 @@ vvas_app_get_es_frame (ParserContext * parser_ctx, FILE * infp,
 
     /* get a complete frame */
     vret = vvas_parser_get_au (parser_ctx->vvas_parser, es_buf,
-        valid_es_size, au_frame, &parser_ctx->parser_offset, incfg,
-        got_eos);
+        valid_es_size, au_frame, &parser_ctx->parser_offset, incfg, got_eos);
 
     parser_ctx->read_again =
         parser_ctx->parser_offset < (int32_t) valid_es_size ? 0 : 1;
@@ -1391,7 +1404,7 @@ get_decoder_output_buffers (DecoderContext * decoder_ctx,
     return false;
   }
 
-  VVAS_APP_DEBUG_LOG ( "Acquired buffer: %p", v_buffer);
+  VVAS_APP_DEBUG_LOG ("Acquired buffer: %p", v_buffer);
 
   /* we acquired VvasVideoBuffer from the pool, but to feed decoder, we need
    * VvasVideoFrame, but par passing buffers to another thread, we will be using
@@ -1408,12 +1421,11 @@ get_decoder_output_buffers (DecoderContext * decoder_ctx,
 
   if (!vvas_hash_table_lookup (decoder_ctx->out_buf_hash_table,
           v_buffer->video_frame)) {
-    VVAS_APP_DEBUG_LOG ( "Adding buffer %p in Hash Table", v_buffer);
+    VVAS_APP_DEBUG_LOG ("Adding buffer %p in Hash Table", v_buffer);
     bret = vvas_hash_table_insert (decoder_ctx->out_buf_hash_table,
         v_buffer->video_frame, v_buffer);
     if (bret == false) {
-      VVAS_APP_ERROR_LOG (
-          "Failed to insert the key/value in the hash table");
+      VVAS_APP_ERROR_LOG ("Failed to insert the key/value in the hash table");
       return false;
     }
   }
@@ -1425,9 +1437,9 @@ get_decoder_output_buffers (DecoderContext * decoder_ctx,
 static void
 print_decoder_input_config (const VvasDecoderInCfg * incfg)
 {
-  VVAS_APP_DEBUG_LOG ( "Decoder input config: Resolution %ux%u",
+  VVAS_APP_DEBUG_LOG ("Decoder input config: Resolution %ux%u",
       incfg->width, incfg->height);
-  VVAS_APP_DEBUG_LOG ( "Decoder input config: Profile %u, level: %u",
+  VVAS_APP_DEBUG_LOG ("Decoder input config: Profile %u, level: %u",
       incfg->profile, incfg->level);
   VVAS_APP_DEBUG_LOG ("Decoder input config: Codec Type %u, bit depth: %u, "
       "chroma mode: %u, scan_type: %u", incfg->codec_type,
@@ -1465,18 +1477,18 @@ vvas_app_configure_decoder (VvasContext * vvas_ctx,
   /* configure the decoder with parameters received from parser */
   vret = vvas_decoder_config (decoder_ctx->vvas_decoder, incfg, &outcfg);
   if (VVAS_IS_ERROR (vret)) {
-    VVAS_APP_ERROR_LOG ( "Failed to configure decoder vret=%d", vret);
+    VVAS_APP_ERROR_LOG ("Failed to configure decoder vret=%d", vret);
     return VVAS_RET_ERROR;
   }
 
-  VVAS_APP_DEBUG_LOG ( "minimum number of output buffers required for "
+  VVAS_APP_DEBUG_LOG ("minimum number of output buffers required for "
       "decoder = %d", outcfg.min_out_buf);
 
-  VVAS_APP_DEBUG_LOG ( "vinfo = %dx%d - %d",
+  VVAS_APP_DEBUG_LOG ("vinfo = %dx%d - %d",
       outcfg.vinfo.width, outcfg.vinfo.height, outcfg.vinfo.fmt);
 
-  VVAS_APP_DEBUG_LOG (
-      "vinfo alignment : left = %d, right = %d, top = %d, bottom = %d",
+  VVAS_APP_DEBUG_LOG
+      ("vinfo alignment : left = %d, right = %d, top = %d, bottom = %d",
       outcfg.vinfo.alignment.padding_left, outcfg.vinfo.alignment.padding_right,
       outcfg.vinfo.alignment.padding_top,
       outcfg.vinfo.alignment.padding_bottom);
@@ -1491,13 +1503,14 @@ vvas_app_configure_decoder (VvasContext * vvas_ctx,
   pool_config.maximum_buffers = pool_config.minimum_buffers + 1;
   pool_config.video_info = outcfg.vinfo;
 
-  if (pool_config.maximum_buffers > FRM_BUF_POOL_SIZE) {
+  if ((pool_config.maximum_buffers > FRM_BUF_POOL_SIZE)||
+     (pool_config.minimum_buffers > FRM_BUF_POOL_SIZE)) {
     VVAS_APP_WARNING_LOG ("Decoder can't have more than %u buffers",
         FRM_BUF_POOL_SIZE);
     pool_config.maximum_buffers = FRM_BUF_POOL_SIZE;
     pool_config.minimum_buffers =
         (pool_config.minimum_buffers > pool_config.maximum_buffers) ?
-            (pool_config.maximum_buffers - 1 ): pool_config.minimum_buffers;
+        (pool_config.maximum_buffers - 1) : pool_config.minimum_buffers;
   }
 
   VVAS_APP_DEBUG_LOG ("Decoder Pool minimum buffers[%u], maximum_buffers[%u]",
@@ -1581,6 +1594,10 @@ free_overlay_text_params (void *data)
 {
   VvasOverlayTextParams *text_params = (VvasOverlayTextParams *) data;
 
+  if (!text_params) {
+    return;
+  }
+
   if (text_params->disp_text) {
     free (text_params->disp_text);
   }
@@ -1611,7 +1628,7 @@ vvas_app_scaler_crop_each_bbox (const VvasTreeNode * node, void *user_data)
   if (vvas_treenode_get_depth ((VvasTreeNode *) node) != RESNET18_INFER_LEVEL)
     return false;
 
-  VVAS_APP_DEBUG_LOG ( "received prediction node %p", prediction);
+  VVAS_APP_DEBUG_LOG ("received prediction node %p", prediction);
 
   /* Get output buffer from the crop scaler's output buffer pool */
   VvasVideoBuffer *output_buffer;
@@ -1633,8 +1650,8 @@ vvas_app_scaler_crop_each_bbox (const VvasTreeNode * node, void *user_data)
   dst_rect.height = crop_scale_data->model_config->model_height;
   dst_rect.frame = output_buffer->video_frame;
 
-  VVAS_APP_DEBUG_LOG (
-      "cropping frame bbox : frame: %p, x: %d, y: %d, res: %dx%d",
+  VVAS_APP_DEBUG_LOG
+      ("cropping frame bbox : frame: %p, x: %d, y: %d, res: %dx%d",
       src_rect.frame, prediction->bbox.x, prediction->bbox.y,
       prediction->bbox.width, prediction->bbox.height);
 
@@ -1644,8 +1661,7 @@ vvas_app_scaler_crop_each_bbox (const VvasTreeNode * node, void *user_data)
   vret = vvas_scaler_channel_add (crop_scale_data->vvas_scaler, &src_rect,
       &dst_rect, crop_scale_data->ppe, NULL);
   if (VVAS_IS_ERROR (vret)) {
-    VVAS_APP_DEBUG_LOG (
-        "failed to add processing channel in scaler");
+    VVAS_APP_DEBUG_LOG ("failed to add processing channel in scaler");
     vvas_buffer_pool_release_buffer (output_buffer);
     return true;
   }
@@ -1751,10 +1767,10 @@ vvas_app_create_vvas_context (const PipelineContext * pipeline_ctx,
 {
   VvasContext *vvas_ctx;
   VvasReturnType vret = VVAS_RET_SUCCESS;
-  int32_t dev_idx;
+  int32_t device_idx;
 
   if (xclbin_loc) {
-  #ifdef XLNX_U30_PLATFORM
+#ifdef XLNX_U30_PLATFORM
     /* U30 platform */
 
     /* Each pipeline has 4 stream i.e. 1080p30 * 4, hence 2 pipeline means
@@ -1765,20 +1781,20 @@ vvas_app_create_vvas_context (const PipelineContext * pipeline_ctx,
      */
 
     if (pipeline_ctx->instance_id <= 1) {
-      dev_idx = 0;
+      device_idx = 0;
     } else {
-      dev_idx = 1;
+      device_idx = 1;
     }
-  #else
-    dev_idx = V70_DEVICE_INDEX;
-  #endif
+#else
+    device_idx = dev_idx;
+#endif
   } else {
     /* XCLBIN in not given, allocate SW VVAS context */
-    dev_idx = -1;
+    device_idx = -1;
   }
 
   vvas_ctx =
-      vvas_context_create (dev_idx, xclbin_loc, LOG_LEVEL_WARNING, &vret);
+      vvas_context_create (device_idx, xclbin_loc, LOG_LEVEL_WARNING, &vret);
   if (!vvas_ctx) {
     VVAS_APP_ERROR_LOG ("Failed to create VVAS Context, ret: %d", vret);
   }
@@ -1830,12 +1846,17 @@ release_frames (void *data, void *user_data)
 }
 
 static uint64_t
-calculate_decoder_resubmit_time(const VvasDecoderInCfg *incfg)
+calculate_decoder_resubmit_time (const VvasDecoderInCfg * incfg)
 {
-  uint32_t pixel_rate = (incfg->width * incfg->height * incfg->frame_rate);
+  uint32_t clock_ratio = incfg->clk_ratio ? incfg->clk_ratio : 1;
+  uint32_t pixel_rate = (incfg->width * incfg->height * (uint64_t)incfg->frame_rate ) / clock_ratio;
   /* VCU decoder maximum capacity of 4K@60 is considered in below calculation */
   uint32_t max_pixel_rate = 3840 * 2160 * 60;
-  uint64_t max_timeout_ms = 15 * SECOND_IN_MS; /* 15 m seconds */
+  uint64_t max_timeout_ms = 15 * SECOND_IN_MS;  /* 15 m seconds */
+
+  pixel_rate = (!pixel_rate) ? 1 : pixel_rate;
+  pixel_rate = (pixel_rate > max_pixel_rate) ? max_pixel_rate : pixel_rate;
+
   VVAS_APP_DEBUG_LOG ("Pixel_rate: %u, max_pixel_rate: %u, max_timeout_ms: %lu",
       pixel_rate, max_pixel_rate, max_timeout_ms);
 
@@ -1858,7 +1879,7 @@ vvas_app_free_parser_buffer (ParserBuffer * parser_buffer)
 }
 
 static bool
-is_stream_interrupted (PipelineContext *pipeline_ctx, uint8_t stream_id)
+is_stream_interrupted (PipelineContext * pipeline_ctx, uint8_t stream_id)
 {
   bool is_interrupted = false, is_stream_error = false;
   bool is_global_interrupt = false;
@@ -1893,17 +1914,17 @@ vvas_sink_thread (void *args)
   VvasReturnType vret = VVAS_RET_SUCCESS;
   bool is_error = false, is_pipeline_playing = false;
 
-  VVAS_APP_DEBUG_LOG ( "Sink Thread_%hhu started", instance_num);
+  VVAS_APP_DEBUG_LOG ("Sink Thread_%hhu started", instance_num);
 
   while (true) {
     VvasPipelineBuffer *pipeline_buf = (VvasPipelineBuffer *)
         vvas_queue_dequeue (pipeline_ctx->overlay_out_queue[instance_num]);
 
     if (pipeline_buf) {
-      VVAS_APP_DEBUG_LOG ( "Got Buffer: %p", pipeline_buf);
+      VVAS_APP_DEBUG_LOG ("Got Buffer: %p", pipeline_buf);
 
       if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-        VVAS_APP_DEBUG_LOG ( "Got EOS");
+        VVAS_APP_DEBUG_LOG ("Got EOS");
         free (pipeline_buf);
         break;
       }
@@ -1920,7 +1941,7 @@ vvas_sink_thread (void *args)
               pipeline_ctx->instance_id, instance_num);
 
           /* Sink got its first buffer, rendering has been started now */
-          pipeline_ctx->start_ts[instance_num] = vvas_get_clocktime();
+          pipeline_ctx->start_ts[instance_num] = vvas_get_clocktime ();
         }
 
         if (VVAS_APP_SINK_TYPE_FILESINK == gsink_type) {
@@ -1948,7 +1969,7 @@ vvas_sink_thread (void *args)
         pthread_mutex_unlock (&pipeline_ctx->frame_rate_lock[instance_num]);
       }
       if (pipeline_buf) {
-        VVAS_APP_DEBUG_LOG ( "Freeing buf: %p", pipeline_buf);
+        VVAS_APP_DEBUG_LOG ("Freeing buf: %p", pipeline_buf);
         free (pipeline_buf);
       }
       pipeline_buf = NULL;
@@ -1963,9 +1984,10 @@ vvas_sink_thread (void *args)
     fclose (fp);
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Sink thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Sink thread");
   is_pipeline_playing = true;
-  VVAS_APP_LOG ("[Sink_%hhu.%hhu] got EOS", pipeline_ctx->instance_id, instance_num);
+  VVAS_APP_LOG ("[Sink_%hhu.%hhu] got EOS", pipeline_ctx->instance_id,
+      instance_num);
   free (sink_thread_data);
   pthread_exit (NULL);
 }
@@ -2004,7 +2026,7 @@ vvas_overlay_thread (void *args)
     goto error;
   }
 
-  VVAS_APP_DEBUG_LOG ( "Overlay Thread_%hhu started", instance_num);
+  VVAS_APP_DEBUG_LOG ("Overlay Thread_%hhu started", instance_num);
 
   while (true) {
     VvasInferPrediction *cur_yolov3_pred;
@@ -2012,10 +2034,10 @@ vvas_overlay_thread (void *args)
     pipeline_buf = (VvasPipelineBuffer *)
         vvas_queue_dequeue (pipeline_ctx->defunnel_out_queue[instance_num]);
 
-    VVAS_APP_DEBUG_LOG ( "Got Buffer: %p", pipeline_buf);
+    VVAS_APP_DEBUG_LOG ("Got Buffer: %p", pipeline_buf);
 
     if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-      VVAS_APP_DEBUG_LOG ( "Got EOS");
+      VVAS_APP_DEBUG_LOG ("Got EOS");
       break;
     }
 
@@ -2033,8 +2055,8 @@ vvas_overlay_thread (void *args)
       vret = vvas_metaconvert_prepare_overlay_metadata (metaconvert_ctx,
           cur_yolov3_pred->node, &shape_info);
       if (VVAS_IS_ERROR (vret)) {
-        VVAS_APP_ERROR_LOG (
-            "failed to convert inference metadata to overlay metadata");
+        VVAS_APP_ERROR_LOG
+            ("failed to convert inference metadata to overlay metadata");
         is_error = true;
         break;
       }
@@ -2047,7 +2069,7 @@ vvas_overlay_thread (void *args)
 
       vret = vvas_overlay_process_frame (&overlay);
       if (VVAS_IS_ERROR (vret)) {
-        VVAS_APP_ERROR_LOG ( "Failed to draw, %d", vret);
+        VVAS_APP_ERROR_LOG ("Failed to draw, %d", vret);
         is_error = true;
       }
 
@@ -2063,7 +2085,7 @@ vvas_overlay_thread (void *args)
     VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", pipeline_buf);
 
     vvas_queue_enqueue (pipeline_ctx->overlay_out_queue[instance_num],
-            pipeline_buf);
+        pipeline_buf);
     pipeline_buf = NULL;
   }                             /* End of while loop */
 
@@ -2092,7 +2114,7 @@ error:
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "Sending EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Sending EOS downstream");
   vvas_queue_enqueue (pipeline_ctx->overlay_out_queue[instance_num],
       pipeline_buf);
 
@@ -2104,7 +2126,7 @@ error:
     vvas_context_destroy (vvas_ctx);
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Overlay thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Overlay thread");
 
   free (overlay_thread_data);
   pthread_exit (NULL);
@@ -2119,7 +2141,7 @@ error:
  *
  */
 static void *
-vvas_defunnel_thread (void * args)
+vvas_defunnel_thread (void *args)
 {
   ThreadData *defunnel_thread_data = (ThreadData *) args;
   PipelineContext *pipeline_ctx = defunnel_thread_data->pipeline_ctx;
@@ -2128,46 +2150,45 @@ vvas_defunnel_thread (void * args)
   VvasHashTable *hash_table =
       vvas_hash_table_new_full (vvas_int_hash, vvas_int_equal, free, NULL);
   if (!hash_table) {
-    VVAS_APP_ERROR_LOG ( "Couldn't create hash table");
+    VVAS_APP_ERROR_LOG ("Couldn't create hash table");
   }
 
   /* Prepare hashtable key:stream_id, value:output_queue */
   for (uint8_t idx = 0; idx < pipeline_ctx->num_streams; idx++) {
-    uint8_t * key = (uint8_t *) calloc (1, sizeof (uint8_t));
+    uint8_t *key = (uint8_t *) calloc (1, sizeof (uint8_t));
     *key = idx;
 
-    VVAS_APP_DEBUG_LOG ( "Adding key: %hhu, value: %p",
+    VVAS_APP_DEBUG_LOG ("Adding key: %hhu, value: %p",
         idx, pipeline_ctx->defunnel_out_queue[idx]);
 
     if (!vvas_hash_table_insert (hash_table, key,
-        pipeline_ctx->defunnel_out_queue[idx])) {
-      VVAS_APP_ERROR_LOG ( "Couldn't add to hash table");
+            pipeline_ctx->defunnel_out_queue[idx])) {
+      VVAS_APP_ERROR_LOG ("Couldn't add to hash table");
       vvas_app_make_pipeline_exit (pipeline_ctx);
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "De-Funnel thread is up now");
+  VVAS_APP_DEBUG_LOG ("De-Funnel thread is up now");
 
   while (!exit) {
-    VvasPipelineBuffer * pipeline_buf = NULL;
-    VvasQueue * output_queue = NULL;
+    VvasPipelineBuffer *pipeline_buf = NULL;
+    VvasQueue *output_queue = NULL;
 
     pipeline_buf = (VvasPipelineBuffer *) vvas_queue_dequeue
         (pipeline_ctx->resnet18_out_queue[CAR_CLASSIFICATION_TYPE_LAST]);
 
-    VVAS_APP_DEBUG_LOG ( "Got Buffer for stream: %hhu: %p",
+    VVAS_APP_DEBUG_LOG ("Got Buffer for stream: %hhu: %p",
         pipeline_buf->stream_id, pipeline_buf);
 
     output_queue = (VvasQueue *)
         vvas_hash_table_lookup (hash_table, &pipeline_buf->stream_id);
     if (!output_queue) {
       //TODO: Error handling
-      VVAS_APP_ERROR_LOG ( "Couldn't get from hash table");
+      VVAS_APP_ERROR_LOG ("Couldn't get from hash table");
     }
 
     if (VVAS_STREAM_EOS == pipeline_buf->eos_type) {
-      VVAS_APP_DEBUG_LOG ( "Got EOS for stream: %hhu",
-              pipeline_buf->stream_id);
+      VVAS_APP_DEBUG_LOG ("Got EOS for stream: %hhu", pipeline_buf->stream_id);
 
       /* Convert this STREAM EOS to PIPELINE_EOS */
       pipeline_buf->eos_type = VVAS_PIPELINE_EOS;
@@ -2182,26 +2203,28 @@ vvas_defunnel_thread (void * args)
       /* Got Pipeline EOS, need to send this all existing output queues, and
        * exit this de-funnel thread */
       uint32_t hash_table_size = vvas_hash_table_size (hash_table);
-      uint8_t * stream_id = NULL;
+      uint8_t *stream_id = NULL;
       VvasQueue *out_queue = NULL;
       VvasHashTableIter itr;
 
-      VVAS_APP_DEBUG_LOG ( "Got Pipeline EOS");
+      VVAS_APP_DEBUG_LOG ("Got Pipeline EOS");
 
       /* Free this pipeline buffer */
-      vvas_app_free_pipeline_buffer(pipeline_buf);
+      vvas_app_free_pipeline_buffer (pipeline_buf);
 
       vvas_hash_table_iter_init (hash_table, &itr);
 
       /* Iterate all the entries in get the output queues */
       for (uint32_t idx = 0; idx < hash_table_size; idx++) {
-        vvas_hash_table_iter_next (&itr, (void **)&stream_id, (void **)&out_queue);
+        vvas_hash_table_iter_next (&itr, (void **) &stream_id,
+            (void **) &out_queue);
 
         if (stream_id && out_queue) {
           /* Create a copy of EOS buffer and send it to this out_queue */
-          pipeline_buf = (VvasPipelineBuffer *) calloc (1, sizeof (VvasPipelineBuffer));
+          pipeline_buf =
+              (VvasPipelineBuffer *) calloc (1, sizeof (VvasPipelineBuffer));
           pipeline_buf->stream_id = *stream_id;
-          VVAS_APP_DEBUG_LOG ( "Sending EOS to %hhu", *stream_id);
+          VVAS_APP_DEBUG_LOG ("Sending EOS to %hhu", *stream_id);
           pipeline_buf->eos_type = VVAS_PIPELINE_EOS;
           vvas_queue_enqueue (out_queue, pipeline_buf);
           pipeline_buf = NULL;
@@ -2211,7 +2234,7 @@ vvas_defunnel_thread (void * args)
       exit = true;
 
     } else {
-      VVAS_APP_DEBUG_LOG ( "Pushing buffer to output queue: %p", output_queue);
+      VVAS_APP_DEBUG_LOG ("Pushing buffer to output queue: %p", output_queue);
       vvas_queue_enqueue (output_queue, pipeline_buf);
     }
   }
@@ -2221,7 +2244,7 @@ vvas_defunnel_thread (void * args)
   }
 
   free (defunnel_thread_data);
-  VVAS_APP_DEBUG_LOG ( "Exiting Defnnel thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Defnnel thread");
   pthread_exit (NULL);
 }
 
@@ -2234,11 +2257,11 @@ vvas_defunnel_thread (void * args)
  *
  */
 static void *
-vvas_funnel_thread (void * args)
+vvas_funnel_thread (void *args)
 {
   ThreadData *funnel_thread_data = (ThreadData *) args;
   PipelineContext *pipeline_ctx = funnel_thread_data->pipeline_ctx;
-  VvasClockTime dequeue_time[MAX_STREAMS_PER_PIPELINE] = {0};
+  VvasClockTime dequeue_time[MAX_STREAMS_PER_PIPELINE] = { 0 };
   bool exit = false;
 
   VvasList *input_queues = NULL;
@@ -2249,12 +2272,13 @@ vvas_funnel_thread (void * args)
         vvas_list_append (input_queues, pipeline_ctx->scaler_out_queue[idx]);
   }
 
-  VVAS_APP_DEBUG_LOG ( "Funnel thread is up now");
+  VVAS_APP_DEBUG_LOG ("Funnel thread is up now");
 
   while (!exit) {
     for (uint32_t idx = 0; idx < vvas_list_length (input_queues); idx++) {
-      VvasQueue *in_queue = (VvasQueue *) vvas_list_nth_data (input_queues, idx);
-      VvasPipelineBuffer * pipeline_buf = NULL;
+      VvasQueue *in_queue =
+          (VvasQueue *) vvas_list_nth_data (input_queues, idx);
+      VvasPipelineBuffer *pipeline_buf = NULL;
       uint32_t queue_length = 0;
 
       queue_length = vvas_queue_get_length (in_queue);
@@ -2263,7 +2287,7 @@ vvas_funnel_thread (void * args)
         VvasClockTime now, wait_time;
         VvasClockTimeDiff elapsed_time, elapsed_time_ms;
 
-        now = vvas_get_clocktime();
+        now = vvas_get_clocktime ();
         now = now / 1000;
 
         elapsed_time = (dequeue_time[idx]) ? (now - dequeue_time[idx]) : 0;
@@ -2290,15 +2314,15 @@ vvas_funnel_thread (void * args)
         continue;
       }
 
-      dequeue_time[idx] = vvas_get_clocktime();
+      dequeue_time[idx] = vvas_get_clocktime ();
       dequeue_time[idx] = dequeue_time[idx] / 1000;
 
-      VVAS_APP_DEBUG_LOG ( "Got buffer from %hhu: %p",
+      VVAS_APP_DEBUG_LOG ("Got buffer from %hhu: %p",
           pipeline_buf->stream_id, pipeline_buf);
 
       if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-        VVAS_APP_DEBUG_LOG ( "Stream %hhu is now at EOS",
-             pipeline_buf->stream_id);
+        VVAS_APP_DEBUG_LOG ("Stream %hhu is now at EOS",
+            pipeline_buf->stream_id);
 
         /* Remove this in_queue from the list of input queues */
         input_queues = vvas_list_remove (input_queues, in_queue);
@@ -2325,8 +2349,8 @@ vvas_funnel_thread (void * args)
 
   free (funnel_thread_data);
 
-  VVAS_APP_DEBUG_LOG ( "Exiting funnel thread");
-  pthread_exit(NULL);
+  VVAS_APP_DEBUG_LOG ("Exiting funnel thread");
+  pthread_exit (NULL);
 }
 
 /**
@@ -2364,7 +2388,7 @@ vvas_resnet18_thread (void *args)
     case CAR_CLASSIFICATION_TYPE_CAR_COLOR:{
       resnet18_handle =
           vvas_app_create_dpuinfer (&resnet18_car_color_config,
-              LOG_LEVEL_ERROR);
+          LOG_LEVEL_ERROR);
 
       input_queue = pipeline_ctx->crop_scaler_out_queue;
       output_queue =
@@ -2374,8 +2398,7 @@ vvas_resnet18_thread (void *args)
 
     case CAR_CLASSIFICATION_TYPE_CAR_MAKE:{
       resnet18_handle =
-          vvas_app_create_dpuinfer (&resnet18_car_make_config,
-              LOG_LEVEL_ERROR);
+          vvas_app_create_dpuinfer (&resnet18_car_make_config, LOG_LEVEL_ERROR);
 
       input_queue =
           pipeline_ctx->resnet18_out_queue[CAR_CLASSIFICATION_TYPE_CAR_COLOR];
@@ -2386,8 +2409,7 @@ vvas_resnet18_thread (void *args)
 
     case CAR_CLASSIFICATION_TYPE_CAR_TYPE:{
       resnet18_handle =
-          vvas_app_create_dpuinfer (&resnet18_car_type_config,
-              LOG_LEVEL_ERROR);
+          vvas_app_create_dpuinfer (&resnet18_car_type_config, LOG_LEVEL_ERROR);
 
       input_queue =
           pipeline_ctx->resnet18_out_queue[CAR_CLASSIFICATION_TYPE_CAR_MAKE];
@@ -2410,7 +2432,7 @@ vvas_resnet18_thread (void *args)
     goto error;
   }
 
-  VVAS_APP_DEBUG_LOG ( "Resnet18_%d thread up now", classification_type);
+  VVAS_APP_DEBUG_LOG ("Resnet18_%d thread up now", classification_type);
 
   while (true) {
     VvasVideoFrame *resnet18_dpu_inputs[MAX_NUM_OBJECT] = { NULL };
@@ -2423,21 +2445,22 @@ vvas_resnet18_thread (void *args)
     uint8_t current_batch_size = 0, num_output_buffers = 0;
     uint8_t stream_eos_buf_count = 0;
 
-    VVAS_APP_DEBUG_LOG ( "Preparing batch of size: %u", batch_size);
+    VVAS_APP_DEBUG_LOG ("Preparing batch of size: %u", batch_size);
 
     while ((current_batch_size < batch_size)) {
 
       if (partial_buffer && num_partial_buffers) {
         uint32_t offset = 0;
         /* we have partial buffer from the previous batch */
-        crop_buf_len = vvas_list_length (partial_buffer->level_2_cropped_buffers);
+        crop_buf_len =
+            vvas_list_length (partial_buffer->level_2_cropped_buffers);
 
         /* In this partial buffer we have already processed
          * (crop_buf_len - num_partial_buffers) number of buffers.
          */
         offset = crop_buf_len - num_partial_buffers;
 
-        VVAS_APP_DEBUG_LOG ( "We have partial buffer: %p, "
+        VVAS_APP_DEBUG_LOG ("We have partial buffer: %p, "
             "num_partial_buffers: %u, current_batch_size: %u", partial_buffer,
             num_partial_buffers, current_batch_size);
 
@@ -2445,28 +2468,28 @@ vvas_resnet18_thread (void *args)
           for (uint32_t i = 0; i < batch_size; i++) {
             VvasInferPrediction *resnet18_pred_node;
             VvasVideoBuffer *v_buffer = (VvasVideoBuffer *)
-                  vvas_list_nth_data (partial_buffer->level_2_cropped_buffers,
-                      offset + i);
+                vvas_list_nth_data (partial_buffer->level_2_cropped_buffers,
+                offset + i);
             resnet18_pred_node = (VvasInferPrediction *) v_buffer->user_data;
 
-            resnet18_dpu_inputs [current_batch_size] = v_buffer->video_frame;
+            resnet18_dpu_inputs[current_batch_size] = v_buffer->video_frame;
             resnet18_pred[current_batch_size] = resnet18_pred_node;
 
             current_batch_size++;
             num_partial_buffers--;
           }
           /* As we have prepared the batch, break the batch preparing loop */
-          VVAS_APP_DEBUG_LOG ( "Batch prepared from the partial buffer");
+          VVAS_APP_DEBUG_LOG ("Batch prepared from the partial buffer");
           break;
         } else {
           for (uint32_t i = 0; i < num_partial_buffers; i++) {
             VvasInferPrediction *resnet18_pred_node;
             VvasVideoBuffer *v_buffer = (VvasVideoBuffer *)
-                  vvas_list_nth_data (partial_buffer->level_2_cropped_buffers,
-                      offset + i);
+                vvas_list_nth_data (partial_buffer->level_2_cropped_buffers,
+                offset + i);
             resnet18_pred_node = (VvasInferPrediction *) v_buffer->user_data;
 
-            resnet18_dpu_inputs [current_batch_size] = v_buffer->video_frame;
+            resnet18_dpu_inputs[current_batch_size] = v_buffer->video_frame;
             resnet18_pred[current_batch_size] = resnet18_pred_node;
 
             current_batch_size++;
@@ -2479,24 +2502,26 @@ vvas_resnet18_thread (void *args)
 
       if (!is_eos) {
         if (resnet18_batch_timeout) {
-            pipeline_buf = (VvasPipelineBuffer *)
-                vvas_queue_dequeue_timeout (input_queue,
-                (resnet18_batch_timeout * SECOND_IN_MS));
+          pipeline_buf = (VvasPipelineBuffer *)
+              vvas_queue_dequeue_timeout (input_queue,
+              (resnet18_batch_timeout * SECOND_IN_MS));
 
           if (!pipeline_buf) {
             if (current_batch_size) {
-              VVAS_APP_DEBUG_LOG ("timeout... pushing current batch to inference");
+              VVAS_APP_DEBUG_LOG
+                  ("timeout... pushing current batch to inference");
               break;
             } else {
               continue;
             }
           }
         } else {
-          pipeline_buf = (VvasPipelineBuffer *) vvas_queue_dequeue (input_queue);
+          pipeline_buf =
+              (VvasPipelineBuffer *) vvas_queue_dequeue (input_queue);
         }
 
-        VVAS_APP_DEBUG_LOG ( "Got Buffer from %hhu: %p",
-                  pipeline_buf->stream_id, pipeline_buf);
+        VVAS_APP_DEBUG_LOG ("Got Buffer from %hhu: %p",
+            pipeline_buf->stream_id, pipeline_buf);
       } else {
         /* We had got EOS in last iteration, and we have processed partial
          * buffers (if any) also, need to quit the batch processing loop */
@@ -2504,7 +2529,7 @@ vvas_resnet18_thread (void *args)
       }
 
       if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-        VVAS_APP_DEBUG_LOG ( "Got EOS");
+        VVAS_APP_DEBUG_LOG ("Got EOS");
         is_eos = true;
         /* If there is any partial buffer, we need to process them in current
          * batch */
@@ -2517,7 +2542,7 @@ vvas_resnet18_thread (void *args)
          * the current batch, then push this stream EOS after pushing processed
          * frames. It is possible that while preparing current batch, more than
          * one stream went EOS, hence storing all of them */
-        VVAS_APP_DEBUG_LOG ( "Got Stream EOS from %hhu",
+        VVAS_APP_DEBUG_LOG ("Got Stream EOS from %hhu",
             pipeline_buf->stream_id);
         stream_eos_buffers[stream_eos_buf_count++] = pipeline_buf;
         pipeline_buf = NULL;
@@ -2527,7 +2552,7 @@ vvas_resnet18_thread (void *args)
       if (pipeline_buf->level_2_cropped_buffers) {
         crop_buf_len = vvas_list_length (pipeline_buf->level_2_cropped_buffers);
 
-        VVAS_APP_DEBUG_LOG ( "Crop_buf_len: %u, "
+        VVAS_APP_DEBUG_LOG ("Crop_buf_len: %u, "
             "current_batch_size: %u", crop_buf_len, current_batch_size);
 
         if ((crop_buf_len + current_batch_size) <= batch_size) {
@@ -2536,15 +2561,15 @@ vvas_resnet18_thread (void *args)
           for (uint32_t idx = 0; idx < crop_buf_len; idx++) {
             VvasInferPrediction *resnet18_pred_node;
             VvasVideoBuffer *v_buffer = (VvasVideoBuffer *)
-                  vvas_list_nth_data (pipeline_buf->level_2_cropped_buffers, idx);
+                vvas_list_nth_data (pipeline_buf->level_2_cropped_buffers, idx);
             resnet18_pred_node = (VvasInferPrediction *) v_buffer->user_data;
 
-            resnet18_dpu_inputs [current_batch_size] = v_buffer->video_frame;
+            resnet18_dpu_inputs[current_batch_size] = v_buffer->video_frame;
             resnet18_pred[current_batch_size] = resnet18_pred_node;
             current_batch_size++;
           }
           output_buffers[num_output_buffers++] = pipeline_buf;
-          VVAS_APP_DEBUG_LOG ( "We can process %p buffer "
+          VVAS_APP_DEBUG_LOG ("We can process %p buffer "
               "completely", pipeline_buf);
           pipeline_buf = NULL;
         } else {
@@ -2559,15 +2584,15 @@ vvas_resnet18_thread (void *args)
           for (uint32_t idx = 0; idx < current_buf_process_count; idx++) {
             VvasInferPrediction *resnet18_pred_node;
             VvasVideoBuffer *v_buffer = (VvasVideoBuffer *)
-                  vvas_list_nth_data (pipeline_buf->level_2_cropped_buffers, idx);
+                vvas_list_nth_data (pipeline_buf->level_2_cropped_buffers, idx);
             resnet18_pred_node = (VvasInferPrediction *) v_buffer->user_data;
 
-            resnet18_dpu_inputs [current_batch_size] = v_buffer->video_frame;
+            resnet18_dpu_inputs[current_batch_size] = v_buffer->video_frame;
             resnet18_pred[current_batch_size] = resnet18_pred_node;
 
             current_batch_size++;
           }
-          VVAS_APP_DEBUG_LOG ( "%p buffer will be processed "
+          VVAS_APP_DEBUG_LOG ("%p buffer will be processed "
               "partially", pipeline_buf);
           partial_buffer = pipeline_buf;
           pipeline_buf = NULL;
@@ -2575,7 +2600,7 @@ vvas_resnet18_thread (void *args)
       } else {
         /* Current buffer doesn't have level 2 cropped buffers, this means
          * that there were no objects detected in this buffer */
-        VVAS_APP_DEBUG_LOG ( "Buffer doesn't have crop bufs, "
+        VVAS_APP_DEBUG_LOG ("Buffer doesn't have crop bufs, "
             "%p", pipeline_buf);
 
         if (current_batch_size) {
@@ -2592,7 +2617,7 @@ vvas_resnet18_thread (void *args)
              * buffers, we can't wait indefinitely. Hence breaking the batch
              * preparation loop, we will process all that we have in current
              * batch. */
-            VVAS_APP_DEBUG_LOG ( "Breaking batch preparation");
+            VVAS_APP_DEBUG_LOG ("Breaking batch preparation");
             break;
           }
 
@@ -2600,7 +2625,7 @@ vvas_resnet18_thread (void *args)
           /* There is no old frames in the current batch, we can send this
            * buffer now to downstream .
            */
-          VVAS_APP_DEBUG_LOG ( "Pushing buffer downstream: %p", pipeline_buf);
+          VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", pipeline_buf);
           vvas_queue_enqueue (output_queue, pipeline_buf);
         }
         pipeline_buf = NULL;
@@ -2608,7 +2633,7 @@ vvas_resnet18_thread (void *args)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Processing batch of size: %u", current_batch_size);
+    VVAS_APP_DEBUG_LOG ("Processing batch of size: %u", current_batch_size);
 
     /* Batch prepared, do inferencing now */
     vret =
@@ -2630,15 +2655,17 @@ vvas_resnet18_thread (void *args)
 
     for (int idx = 0; idx < num_output_buffers; idx++) {
       VvasPipelineBuffer *out_bufer = output_buffers[idx];
-        if (CAR_CLASSIFICATION_TYPE_LAST == classification_type) {
+      if (CAR_CLASSIFICATION_TYPE_LAST == classification_type) {
 
         /* This is the last classification level in 2nd stage inferencing,
          * release cropped buffer to the pool */
-        uint32_t buf_len = vvas_list_length (out_bufer->level_2_cropped_buffers);
+        uint32_t buf_len =
+            vvas_list_length (out_bufer->level_2_cropped_buffers);
 
         for (uint32_t i = 0; i < buf_len; i++) {
-          VvasVideoBuffer *v_buffer = (VvasVideoBuffer*) vvas_list_nth_data (
-              out_bufer->level_2_cropped_buffers, i);
+          VvasVideoBuffer *v_buffer =
+              (VvasVideoBuffer *)
+              vvas_list_nth_data (out_bufer->level_2_cropped_buffers, i);
 
           /* Prediction node will be freed from overlay thread */
           vvas_buffer_pool_release_buffer (v_buffer);
@@ -2648,7 +2675,7 @@ vvas_resnet18_thread (void *args)
         out_bufer->level_2_cropped_buffers = NULL;
       }
 
-      VVAS_APP_DEBUG_LOG ( "Pushing buffer downstream: %p", out_bufer);
+      VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", out_bufer);
       vvas_queue_enqueue (output_queue, out_bufer);
       output_buffers[idx] = NULL;
     }
@@ -2658,7 +2685,7 @@ vvas_resnet18_thread (void *args)
 
     for (uint8_t idx = 0; idx < stream_eos_buf_count; idx++) {
       /* Batch processed and sent downstream, Send stream EOS buffers now */
-      VVAS_APP_DEBUG_LOG ( "Pushing STREAM EOS buffer %p",
+      VVAS_APP_DEBUG_LOG ("Pushing STREAM EOS buffer %p",
           stream_eos_buffers[idx]);
       vvas_queue_enqueue (output_queue, stream_eos_buffers[idx]);
     }
@@ -2694,15 +2721,15 @@ error:
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (output_queue, pipeline_buf);
 
   if (resnet18_handle) {
     vvas_dpuinfer_destroy (resnet18_handle);
-    VVAS_APP_DEBUG_LOG ( "Resnet18 instance Destroyed");
+    VVAS_APP_DEBUG_LOG ("Resnet18 instance Destroyed");
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Resnet18 thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Resnet18 thread");
 
   free (resnet18_thread_data);
 
@@ -2730,9 +2757,9 @@ vvas_crop_scale_thread (void *args)
   VvasScalerPpe scaler_ppe = { 0 };
   int32_t num_planes = 0;
   bool is_error = false;
-  const VvasDpuInferConf * model_config;
-  const VvasModelConf * model_requirement;
-  VvasQueue * input_queue, *output_queue;
+  const VvasDpuInferConf *model_config;
+  const VvasModelConf *model_requirement;
+  VvasQueue *input_queue, *output_queue;
   char scaler_ip_name[100];
 
   model_config = &resnet18_car_make_config;
@@ -2742,7 +2769,7 @@ vvas_crop_scale_thread (void *args)
 
   num_planes = get_num_planes (model_config->model_format);
   if (!num_planes) {
-    VVAS_APP_ERROR_LOG ( "Unsupported video format");
+    VVAS_APP_ERROR_LOG ("Unsupported video format");
     is_error = true;
     goto error;
   }
@@ -2779,7 +2806,7 @@ vvas_crop_scale_thread (void *args)
   scaler_ppe.scale_g = model_requirement->scale_g;
   scaler_ppe.scale_b = model_requirement->scale_b;
 
-  VVAS_APP_DEBUG_LOG ( "Crop Scaler Thread Started");
+  VVAS_APP_DEBUG_LOG ("Crop Scaler Thread Started");
   VVAS_APP_DEBUG_LOG ("Crop Scaler Output: %d x %d, format: %d",
       pool_config.video_info.width, pool_config.video_info.height,
       pool_config.video_info.fmt);
@@ -2821,7 +2848,7 @@ vvas_crop_scale_thread (void *args)
 #endif
 
   if (!vvas_scaler) {
-    VVAS_APP_ERROR_LOG ( "failed to create scaler context");
+    VVAS_APP_ERROR_LOG ("failed to create scaler context");
     is_error = true;
     goto error;
   }
@@ -2832,11 +2859,11 @@ vvas_crop_scale_thread (void *args)
     pipeline_buf = (VvasPipelineBuffer *)
         vvas_queue_dequeue (input_queue);
 
-    VVAS_APP_DEBUG_LOG ( "Got Buffer from %hhu: %p",
+    VVAS_APP_DEBUG_LOG ("Got Buffer from %hhu: %p",
         pipeline_buf->stream_id, pipeline_buf);
 
     if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-      VVAS_APP_DEBUG_LOG ( "Got EOS");
+      VVAS_APP_DEBUG_LOG ("Got EOS");
       break;
     }
 
@@ -2864,7 +2891,7 @@ vvas_crop_scale_thread (void *args)
       /* scale input frame */
       vret = vvas_scaler_process_frame (vvas_scaler);
       if (VVAS_IS_ERROR (vret)) {
-        VVAS_APP_ERROR_LOG ( "failed to process scaler");
+        VVAS_APP_ERROR_LOG ("failed to process scaler");
         is_error = true;
         break;
       }
@@ -2902,16 +2929,16 @@ error:
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (output_queue, pipeline_buf);
 
   if (vvas_scaler) {
     vvas_scaler_destroy (vvas_scaler);
-    VVAS_APP_DEBUG_LOG ( "Crop Scaler Destroyed");
+    VVAS_APP_DEBUG_LOG ("Crop Scaler Destroyed");
   }
 
   if (scaler_buf_pool) {
-    VVAS_APP_DEBUG_LOG ( "Freeing crop_scaler buffer pool");
+    VVAS_APP_DEBUG_LOG ("Freeing crop_scaler buffer pool");
     vvas_buffer_pool_free (scaler_buf_pool);
   }
 
@@ -2919,7 +2946,7 @@ error:
     vvas_context_destroy (vvas_ctx);
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Crop Scaler thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Crop Scaler thread");
   free (crop_scale_thread_data);
   pthread_exit (NULL);
 }
@@ -2946,12 +2973,12 @@ vvas_yolov3_thread (void *args)
   yolov3_handle = vvas_app_create_dpuinfer (&yolov3_config, LOG_LEVEL_ERROR);
 
   if (!yolov3_handle) {
-    VVAS_APP_ERROR_LOG ( "failed to create yolov3 handle");
+    VVAS_APP_ERROR_LOG ("failed to create yolov3 handle");
     is_error = true;
     goto error;
   }
 
-  VVAS_APP_DEBUG_LOG ( "YOLOV3 Thread started");
+  VVAS_APP_DEBUG_LOG ("YOLOV3 Thread started");
 
   while (true) {
     VvasVideoFrame *yolov3_dpu_inputs[MAX_NUM_OBJECT] = { NULL };
@@ -2962,7 +2989,7 @@ vvas_yolov3_thread (void *args)
     uint8_t current_batch_size = 0;
     uint8_t stream_eos_buf_count = 0;
 
-    VVAS_APP_DEBUG_LOG ( "Preparing batch of size : %hhu",
+    VVAS_APP_DEBUG_LOG ("Preparing batch of size : %hhu",
         yolov3_config.batch_size);
 
     /* Prepare batch */
@@ -2971,11 +2998,12 @@ vvas_yolov3_thread (void *args)
       if (yolov3_batch_timeout) {
         pipeline_buf = (VvasPipelineBuffer *)
             vvas_queue_dequeue_timeout (pipeline_ctx->funnel_out_queue,
-                (yolov3_batch_timeout * SECOND_IN_MS));
+            (yolov3_batch_timeout * SECOND_IN_MS));
 
         if (!pipeline_buf) {
           if (current_batch_size) {
-            VVAS_APP_DEBUG_LOG ("timeout... pushing current batch to inference");
+            VVAS_APP_DEBUG_LOG
+                ("timeout... pushing current batch to inference");
             break;
           } else {
             continue;
@@ -2985,18 +3013,18 @@ vvas_yolov3_thread (void *args)
         pipeline_buf = (VvasPipelineBuffer *)
             vvas_queue_dequeue (pipeline_ctx->funnel_out_queue);
       }
-      VVAS_APP_DEBUG_LOG ( "Got Buffer from %hhu: %p",
+      VVAS_APP_DEBUG_LOG ("Got Buffer from %hhu: %p",
           pipeline_buf->stream_id, pipeline_buf);
 
       if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-        VVAS_APP_DEBUG_LOG ( "Got EOS");
+        VVAS_APP_DEBUG_LOG ("Got EOS");
         is_eos = true;
         break;
       }
 
       if ((!pipeline_buf->level_1_scaled_buffer) &&
           !(VVAS_STREAM_EOS == pipeline_buf->eos_type)) {
-        VVAS_APP_ERROR_LOG ( "No Level-1 scaled buffer");
+        VVAS_APP_ERROR_LOG ("No Level-1 scaled buffer");
         is_error = true;
         break;
       }
@@ -3007,7 +3035,7 @@ vvas_yolov3_thread (void *args)
          * the current batch, then push this stream EOS after pushing processed
          * frames. It is possible that while preparing current batch, more than
          * one stream went EOS, hence storing all of them */
-        VVAS_APP_DEBUG_LOG ( "Got Stream EOS from %hhu",
+        VVAS_APP_DEBUG_LOG ("Got Stream EOS from %hhu",
             pipeline_buf->stream_id);
         stream_eos_buffers[stream_eos_buf_count++] = pipeline_buf;
         continue;
@@ -3031,12 +3059,12 @@ vvas_yolov3_thread (void *args)
 
     if (current_batch_size) {
 
-      VVAS_APP_DEBUG_LOG ( "Processing batch of %u", current_batch_size);
+      VVAS_APP_DEBUG_LOG ("Processing batch of %u", current_batch_size);
 
       vret = vvas_dpuinfer_process_frames (yolov3_handle, yolov3_dpu_inputs,
           yolov3_pred, current_batch_size);
       if (VVAS_IS_ERROR (vret)) {
-        VVAS_APP_ERROR_LOG ( "failed to do yolov3 inference = %d", vret);
+        VVAS_APP_ERROR_LOG ("failed to do yolov3 inference = %d", vret);
         for (uint8_t idx = 0; idx < current_batch_size; idx++) {
           vvas_app_free_pipeline_buffer (pipline_buffers[idx]);
         }
@@ -3057,8 +3085,9 @@ vvas_yolov3_thread (void *args)
           vvas_video_frame_get_videoinfo (main_buffer, &data.to);
 
           /* scale metadata to original buffer (i.e. decoder output buffer) */
-          vvas_treenode_traverse (yolov3_pred[idx]->node, IN_ORDER, TRAVERSE_ALL,
-              -1, (vvas_treenode_traverse_func) node_scale_ip, &data);
+          vvas_treenode_traverse (yolov3_pred[idx]->node, IN_ORDER,
+              TRAVERSE_ALL, -1, (vvas_treenode_traverse_func) node_scale_ip,
+              &data);
 
           /* Store scaled metadata into main buffer's user_data */
           buf->main_buffer->user_data = yolov3_pred[idx];
@@ -3068,14 +3097,14 @@ vvas_yolov3_thread (void *args)
         vvas_buffer_pool_release_buffer (buf->level_1_scaled_buffer);
         buf->level_1_scaled_buffer = NULL;
 
-        VVAS_APP_DEBUG_LOG ( "Pushing buffer downstream: %p", buf);
+        VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", buf);
         vvas_queue_enqueue (pipeline_ctx->yolov3_out_queue, buf);
       }
     }
 
     for (uint8_t idx = 0; idx < stream_eos_buf_count; idx++) {
       /* Batch processed and sent downstream, Send stream EOS buffers now */
-      VVAS_APP_DEBUG_LOG ( "Pushing STREAM EOS buffer %p",
+      VVAS_APP_DEBUG_LOG ("Pushing STREAM EOS buffer %p",
           stream_eos_buffers[idx]);
       vvas_queue_enqueue (pipeline_ctx->yolov3_out_queue,
           stream_eos_buffers[idx]);
@@ -3112,15 +3141,15 @@ error:
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (pipeline_ctx->yolov3_out_queue, pipeline_buf);
 
   if (yolov3_handle) {
     vvas_dpuinfer_destroy (yolov3_handle);
-    VVAS_APP_DEBUG_LOG ( "YOLOV3 instance Destroyed");
+    VVAS_APP_DEBUG_LOG ("YOLOV3 instance Destroyed");
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting YOLOV3 thread");
+  VVAS_APP_DEBUG_LOG ("Exiting YOLOV3 thread");
 
   free (yolov3_thread_data);
 
@@ -3153,7 +3182,7 @@ vvas_scaler_thread (void *args)
 
   num_planes = get_num_planes (resnet18_car_make_config.model_format);
   if (!num_planes) {
-    VVAS_APP_ERROR_LOG ( "Unsupported video format");
+    VVAS_APP_ERROR_LOG ("Unsupported video format");
     is_error = true;
     goto error;
   }
@@ -3222,7 +3251,7 @@ vvas_scaler_thread (void *args)
 #endif
 
   if (!vvas_scaler) {
-    VVAS_APP_ERROR_LOG ( "failed to create scaler context");
+    VVAS_APP_ERROR_LOG ("failed to create scaler context");
     is_error = true;
     goto error;
   }
@@ -3230,7 +3259,7 @@ vvas_scaler_thread (void *args)
   VVAS_APP_DEBUG_LOG ("Created Scaler: %p", vvas_scaler);
 
   scaler_buf_pool = vvas_buffer_pool_create (vvas_ctx, &pool_config,
-          LOG_LEVEL_WARNING);
+      LOG_LEVEL_WARNING);
   if (!scaler_buf_pool) {
     VVAS_APP_ERROR_LOG ("Couldn't allocate buffer pool for scaler");
     is_error = true;
@@ -3240,25 +3269,25 @@ vvas_scaler_thread (void *args)
   VVAS_APP_DEBUG_LOG ("Created Pool: %p", scaler_buf_pool);
 
   while (true) {
-    VvasScalerRect src_rect = {0}, dst_rect = {0};
+    VvasScalerRect src_rect = { 0 }, dst_rect = { 0 };
     VvasVideoInfo in_vinfo;
     VvasVideoBuffer *scaler_out_buf = NULL;
     VvasReturnType vret = VVAS_RET_SUCCESS;
 
     pipeline_buf = (VvasPipelineBuffer *)
         vvas_queue_dequeue (pipeline_ctx->decoder_out_queue[instance_num]);
-    VVAS_APP_DEBUG_LOG ( "Got Buffer: %p", pipeline_buf);
+    VVAS_APP_DEBUG_LOG ("Got Buffer: %p", pipeline_buf);
 
     if (VVAS_PIPELINE_EOS == pipeline_buf->eos_type) {
-      VVAS_APP_DEBUG_LOG ( "Got EOS");
+      VVAS_APP_DEBUG_LOG ("Got EOS");
       break;
     }
 
     /* Got buffer from upstream element, get output buffer from the pool */
-    VVAS_APP_DEBUG_LOG ( "Going to acquire buffer");
+    VVAS_APP_DEBUG_LOG ("Going to acquire buffer");
     scaler_out_buf = vvas_buffer_pool_acquire_buffer (scaler_buf_pool);
 
-    VVAS_APP_DEBUG_LOG ( "Acquired buffer");
+    VVAS_APP_DEBUG_LOG ("Acquired buffer");
     vvas_video_frame_get_videoinfo (pipeline_buf->main_buffer->video_frame,
         &in_vinfo);
 
@@ -3287,7 +3316,7 @@ vvas_scaler_thread (void *args)
     /* scale input frame */
     vret = vvas_scaler_process_frame (vvas_scaler);
     if (VVAS_IS_ERROR (vret)) {
-      VVAS_APP_ERROR_LOG ( "failed to process");
+      VVAS_APP_ERROR_LOG ("failed to process");
       is_error = true;
       vvas_buffer_pool_release_buffer (scaler_out_buf);
       break;
@@ -3296,10 +3325,10 @@ vvas_scaler_thread (void *args)
     /* Scaler operation successful, scaler_out_buf has scaled buffer */
     pipeline_buf->level_1_scaled_buffer = scaler_out_buf;
 
-    VVAS_APP_DEBUG_LOG ( "Pushing buffer downstream: %p", pipeline_buf);
+    VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", pipeline_buf);
 
     vvas_queue_enqueue (pipeline_ctx->scaler_out_queue[instance_num],
-            pipeline_buf);
+        pipeline_buf);
     pipeline_buf = NULL;
   }                             /* End of while loop */
 
@@ -3328,17 +3357,17 @@ error:
     }
   }
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (pipeline_ctx->scaler_out_queue[instance_num],
       pipeline_buf);
 
   if (vvas_scaler) {
     vvas_scaler_destroy (vvas_scaler);
-    VVAS_APP_DEBUG_LOG ( "Scaler Destroyed");
+    VVAS_APP_DEBUG_LOG ("Scaler Destroyed");
   }
 
   if (scaler_buf_pool) {
-    VVAS_APP_DEBUG_LOG ( "Freeing scaler buffer pool");
+    VVAS_APP_DEBUG_LOG ("Freeing scaler buffer pool");
     vvas_buffer_pool_free (scaler_buf_pool);
   }
 
@@ -3346,7 +3375,7 @@ error:
     vvas_context_destroy (vvas_ctx);
   }
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Scaler thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Scaler thread");
 
   free (scaler_thread_data);
   pthread_exit (NULL);
@@ -3365,7 +3394,7 @@ vvas_decoder_thread (void *args)
 {
   ThreadData *decoder_thread_data = (ThreadData *) args;
   PipelineContext *pipeline_ctx = decoder_thread_data->pipeline_ctx;
-  VvasContext *vvas_ctx  = NULL;
+  VvasContext *vvas_ctx = NULL;
   uint8_t instance_num = decoder_thread_data->instance_id;
 
   DecoderContext decoder_ctx = { 0 };
@@ -3377,11 +3406,11 @@ vvas_decoder_thread (void *args)
   VvasPipelineBuffer *out_pipeline_buf = NULL;
   uint64_t decoder_resubmit_time = 0;
   uint8_t decoder_instance_num;
-  uint8_t decoder_kernel_name[128] = {0};
+  uint8_t decoder_kernel_name[128] = { 0 };
   uint8_t hw_instance_id = 0;
   bool is_error = false, is_parser_eos = false;
 
-  VVAS_APP_DEBUG_LOG ( "Decoder Thread_%hhu started", instance_num);
+  VVAS_APP_DEBUG_LOG ("Decoder Thread_%hhu started", instance_num);
 
   pthread_mutex_init (&decoder_ctx.decoder_mutex, NULL);
   pthread_cond_init (&decoder_ctx.free_buffer_cond, NULL);
@@ -3406,13 +3435,13 @@ vvas_decoder_thread (void *args)
 
 #ifndef XLNX_U30_PLATFORM
   /* V70 platform */
-  if (pipeline_ctx->instance_id <= 1 ) {
+  if (pipeline_ctx->instance_id <= 1) {
     hw_instance_id = 0;
   } else {
     hw_instance_id = 1;
   }
 
-  sprintf ((char *)decoder_kernel_name, DECODER_IP_NAME, decoder_instance_num);
+  sprintf ((char *) decoder_kernel_name, DECODER_IP_NAME, decoder_instance_num);
   VVAS_APP_INFO_LOG ("Decoder kernel_name: %s, HW instance id: %hhu",
       decoder_kernel_name, hw_instance_id);
 
@@ -3448,19 +3477,20 @@ vvas_decoder_thread (void *args)
 
       VVAS_APP_DEBUG_LOG ("Getting buffer from Parser");
 
-      parsed_buffer = (ParserBuffer*) vvas_queue_dequeue (
-          pipeline_ctx->parser_out_queue[instance_num]);
+      parsed_buffer =
+          (ParserBuffer *)
+          vvas_queue_dequeue (pipeline_ctx->parser_out_queue[instance_num]);
 
-      VVAS_APP_DEBUG_LOG("Got Buffer: %p", parsed_buffer);
+      VVAS_APP_DEBUG_LOG ("Got Buffer: %p", parsed_buffer);
 
       if (VVAS_PIPELINE_EOS == parsed_buffer->eos_type) {
-        VVAS_APP_DEBUG_LOG("Got EOS from upstream");
+        VVAS_APP_DEBUG_LOG ("Got EOS from upstream");
         is_parser_eos = true;
-        if (is_stream_interrupted(pipeline_ctx, instance_num)) {
+        if (is_stream_interrupted (pipeline_ctx, instance_num)) {
           /* Stream has been interrupted either due to Ctrl + C or due to
            * some error, we'll not drain in this case.
            */
-          VVAS_APP_DEBUG_LOG("Stream interrupted, closing");
+          VVAS_APP_DEBUG_LOG ("Stream interrupted, closing");
           break;
         }
       }
@@ -3468,8 +3498,8 @@ vvas_decoder_thread (void *args)
       if (parsed_buffer->dec_cfg && configure_decoder) {
         vvas_app_configure_decoder (vvas_ctx, &decoder_ctx,
             parsed_buffer->dec_cfg, &dec_outbuf_list);
-        if (VVAS_IS_ERROR(vret)) {
-          VVAS_APP_ERROR_LOG("failed to configure decoder");
+        if (VVAS_IS_ERROR (vret)) {
+          VVAS_APP_ERROR_LOG ("failed to configure decoder");
           is_error = true;
           break;
         }
@@ -3484,9 +3514,9 @@ vvas_decoder_thread (void *args)
         free (parsed_buffer->dec_cfg);
         parsed_buffer->dec_cfg = NULL;
       }
-  }
+    }
 
-try_again:
+  try_again:
     pthread_mutex_lock (&decoder_ctx.decoder_mutex);
     if (decoder_ctx.are_free_buffers_available) {
       decoder_ctx.are_free_buffers_available = false;
@@ -3500,8 +3530,8 @@ try_again:
     uint32_t list_len = vvas_list_length (dec_outbuf_list);
     if (list_len) {
       VVAS_APP_DEBUG_LOG ("Feeding %u free buffers to the decoder", list_len);
-      for (uint32_t idx = 0; idx < list_len; idx++ ) {
-        VvasVideoFrame * vframe = vvas_list_nth_data (dec_outbuf_list, idx);
+      for (uint32_t idx = 0; idx < list_len; idx++) {
+        VvasVideoFrame *vframe = vvas_list_nth_data (dec_outbuf_list, idx);
         if (!vvas_list_find (dec_pending_buffers, vframe)) {
           dec_pending_buffers = vvas_list_append (dec_pending_buffers, vframe);
         }
@@ -3515,14 +3545,14 @@ try_again:
     vret = vvas_decoder_submit_frames (decoder_ctx.vvas_decoder, au_frame,
         dec_outbuf_list);
     if (VVAS_IS_ERROR (vret)) {
-      VVAS_APP_ERROR_LOG ( "submit_frames() failed ret = %d", vret);
+      VVAS_APP_ERROR_LOG ("submit_frames() failed ret = %d", vret);
       is_error = true;
       break;
-    }  else if (vret == VVAS_RET_SEND_AGAIN) {
+    } else if (vret == VVAS_RET_SEND_AGAIN) {
       VVAS_APP_DEBUG_LOG ("input buffer is not consumed. send again");
       send_again = true;
     } else if ((vret == VVAS_RET_SUCCESS) && parsed_buffer) {
-      VVAS_APP_DEBUG_LOG ( "input buffer consumed, freeing parser buf: %p",
+      VVAS_APP_DEBUG_LOG ("input buffer consumed, freeing parser buf: %p",
           parsed_buffer);
       vvas_app_free_parser_buffer (parsed_buffer);
       parsed_buffer = NULL;
@@ -3542,17 +3572,18 @@ try_again:
 
     if (vret == VVAS_RET_SUCCESS) {
 
-      VvasVideoBuffer *pool_buf =
-          (VvasVideoBuffer *) vvas_hash_table_lookup (decoder_ctx.
-          out_buf_hash_table, decoed_vframe);
+      VvasVideoBuffer *pool_buf = (VvasVideoBuffer *)
+          vvas_hash_table_lookup (decoder_ctx.out_buf_hash_table,
+          decoed_vframe);
       if (!pool_buf) {
-        VVAS_APP_ERROR_LOG ( "Couldn't get pool buf for "
+        VVAS_APP_ERROR_LOG ("Couldn't get pool buf for "
             "decoded buffer: %p", decoed_vframe);
         is_error = true;
         break;
       }
 
-      dec_pending_buffers = vvas_list_remove (dec_pending_buffers, decoed_vframe);
+      dec_pending_buffers =
+          vvas_list_remove (dec_pending_buffers, decoed_vframe);
 
       out_pipeline_buf =
           (VvasPipelineBuffer *) calloc (1, sizeof (VvasPipelineBuffer));
@@ -3561,15 +3592,15 @@ try_again:
       out_pipeline_buf->main_buffer = pool_buf;
       out_pipeline_buf->eos_type = VVAS_EOS_NONE;
 
-      VVAS_APP_DEBUG_LOG ( "Pushing buffer downstream: %p", out_pipeline_buf);
+      VVAS_APP_DEBUG_LOG ("Pushing buffer downstream: %p", out_pipeline_buf);
 
       vvas_queue_enqueue (pipeline_ctx->decoder_out_queue[instance_num],
           out_pipeline_buf);
       out_pipeline_buf = NULL;
 
     } else if (vret == VVAS_RET_EOS) {
-      VVAS_APP_DEBUG_LOG ( "Got EOS from Decoder");
-        break;
+      VVAS_APP_DEBUG_LOG ("Got EOS from Decoder");
+      break;
     }
 
     if (send_again) {
@@ -3594,7 +3625,7 @@ try_again:
         /* Let's wait for sometime */
         VVAS_APP_DEBUG_LOG ("Send Again, waiting for %lu or till signaled",
             decoder_resubmit_time);
-        clock_gettime(CLOCK_REALTIME, &ts);
+        clock_gettime (CLOCK_REALTIME, &ts);
         ts.tv_nsec += decoder_resubmit_time * 1000;
 
         pthread_mutex_lock (&decoder_ctx.decoder_mutex);
@@ -3652,12 +3683,12 @@ error:
   out_pipeline_buf->stream_id = instance_num;
   out_pipeline_buf->eos_type = VVAS_PIPELINE_EOS;
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (pipeline_ctx->decoder_out_queue[instance_num],
       out_pipeline_buf);
 
   if (dec_pending_buffers) {
-    VVAS_APP_DEBUG_LOG ( "Releasing Decoder pending buffers...");
+    VVAS_APP_DEBUG_LOG ("Releasing Decoder pending buffers...");
 
     vvas_list_foreach (dec_pending_buffers, release_frames,
         decoder_ctx.out_buf_hash_table);
@@ -3667,7 +3698,7 @@ error:
 
   if (decoder_ctx.vvas_decoder) {
     vvas_decoder_destroy (decoder_ctx.vvas_decoder);
-    VVAS_APP_DEBUG_LOG ( "Decoder Destroyed");
+    VVAS_APP_DEBUG_LOG ("Decoder Destroyed");
   }
 
   if (decoder_ctx.out_buf_hash_table) {
@@ -3675,7 +3706,7 @@ error:
   }
 
   if (decoder_ctx.buffer_pool) {
-    VVAS_APP_DEBUG_LOG ( "Freeing decoder buffer pool");
+    VVAS_APP_DEBUG_LOG ("Freeing decoder buffer pool");
     vvas_buffer_pool_free (decoder_ctx.buffer_pool);
   }
 
@@ -3701,7 +3732,7 @@ error:
 
   free (decoder_thread_data);
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Decoder thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Decoder thread");
   pthread_exit (NULL);
 }
 
@@ -3730,9 +3761,9 @@ vvas_parser_thread (void *args)
   ParserBuffer *parsed_buf = NULL;
   uint32_t repeat_count = 0, buf_count = 0;
 
-  VVAS_APP_DEBUG_LOG ( "Parser Thread_%hhu started", instance_num);
+  VVAS_APP_DEBUG_LOG ("Parser Thread_%hhu started", instance_num);
 
-  VVAS_APP_INFO_LOG ( "Input file: %s, codec: %d",
+  VVAS_APP_INFO_LOG ("Input file: %s, codec: %d",
       pipeline_ctx->input_file[instance_num],
       pipeline_ctx->codec_type[instance_num]);
 
@@ -3750,7 +3781,7 @@ vvas_parser_thread (void *args)
       vvas_parser_create (pipeline_ctx->parser_vvas_ctx[instance_num],
       pipeline_ctx->codec_type[instance_num], LOG_LEVEL_WARNING);
   if (!parser_ctx.vvas_parser) {
-    VVAS_APP_ERROR_LOG ( "Failed to create parser context");
+    VVAS_APP_ERROR_LOG ("Failed to create parser context");
     goto exit;
   }
 
@@ -3759,7 +3790,7 @@ vvas_parser_thread (void *args)
   /* open input elementary stream for reading */
   infp = fopen (pipeline_ctx->input_file[instance_num], "r");
   if (!infp) {
-    VVAS_APP_ERROR_LOG ( "failed to open file %s",
+    VVAS_APP_ERROR_LOG ("failed to open file %s",
         pipeline_ctx->input_file[instance_num]);
     goto exit;
   }
@@ -3769,7 +3800,7 @@ vvas_parser_thread (void *args)
       VVAS_ALLOC_TYPE_NON_CMA,
       VVAS_ALLOC_FLAG_NONE, 0, DEFAULT_READ_SIZE, &vret);
   if (vret != VVAS_RET_SUCCESS) {
-    VVAS_APP_ERROR_LOG ( "Failed to alloc vvas_memory for elementary"
+    VVAS_APP_ERROR_LOG ("Failed to alloc vvas_memory for elementary"
         " stream buffer");
     goto exit;
   }
@@ -3777,7 +3808,7 @@ vvas_parser_thread (void *args)
   /* map es_buf to get user space address */
   vret = vvas_memory_map (es_buf, VVAS_DATA_MAP_WRITE, &es_buf_info);
   if (vret != VVAS_RET_SUCCESS) {
-    VVAS_APP_ERROR_LOG ( "ERROR: Failed to map the es_buf "
+    VVAS_APP_ERROR_LOG ("ERROR: Failed to map the es_buf "
         "for write vret = %d", vret);
     goto exit;
   }
@@ -3787,7 +3818,7 @@ vvas_parser_thread (void *args)
 
   while (true) {
     bool is_eos;
-    is_eos = is_stream_interrupted(pipeline_ctx, instance_num);
+    is_eos = is_stream_interrupted (pipeline_ctx, instance_num);
 
     if (is_eos) {
       VVAS_APP_DEBUG_LOG ("Forcing EOS");
@@ -3797,7 +3828,7 @@ vvas_parser_thread (void *args)
     vret = vvas_app_get_es_frame (&parser_ctx, infp, es_buf,
         &es_buf_info, &au_frame, &dec_in_cfg, &is_eos);
     if (VVAS_IS_ERROR (vret)) {
-      VVAS_APP_ERROR_LOG ( "failed to get elementary stream buffer");
+      VVAS_APP_ERROR_LOG ("failed to get elementary stream buffer");
       break;
     }
 
@@ -3820,11 +3851,11 @@ vvas_parser_thread (void *args)
       repeat_count++;
 
       if (repeat_count >= stream_repeat_count) {
-        VVAS_APP_INFO_LOG ( "Parser EOS");
+        VVAS_APP_INFO_LOG ("Parser EOS");
         break;
 
       } else {
-        VVAS_APP_LOG ( "Parser[%hhu.%hhu] Repeat_count: %u/%u",
+        VVAS_APP_LOG ("Parser[%hhu.%hhu] Repeat_count: %u/%u",
             pipeline_ctx->instance_id, instance_num,
             repeat_count, stream_repeat_count);
 
@@ -3842,7 +3873,7 @@ vvas_parser_thread (void *args)
             vvas_parser_create (pipeline_ctx->parser_vvas_ctx[instance_num],
             pipeline_ctx->codec_type[instance_num], LOG_LEVEL_WARNING);
         if (!parser_ctx.vvas_parser) {
-          VVAS_APP_ERROR_LOG ( "Failed to create parser context");
+          VVAS_APP_ERROR_LOG ("Failed to create parser context");
           break;
         }
       }
@@ -3858,7 +3889,7 @@ exit:
   parsed_buf->parsed_frame = NULL;
   parsed_buf->eos_type = VVAS_PIPELINE_EOS;
 
-  VVAS_APP_DEBUG_LOG ( "Pushing EOS downstream");
+  VVAS_APP_DEBUG_LOG ("Pushing EOS downstream");
   vvas_queue_enqueue (pipeline_ctx->parser_out_queue[instance_num], parsed_buf);
 
   if (infp) {
@@ -3873,13 +3904,13 @@ exit:
   }
 
   if (parser_ctx.vvas_parser) {
-    VVAS_APP_DEBUG_LOG ( "Destroying Parser %p", parser_ctx.vvas_parser);
+    VVAS_APP_DEBUG_LOG ("Destroying Parser %p", parser_ctx.vvas_parser);
     vvas_parser_destroy (parser_ctx.vvas_parser);
   }
 
   free (parser_thread_data);
 
-  VVAS_APP_DEBUG_LOG ( "Exiting Parser Thread");
+  VVAS_APP_DEBUG_LOG ("Exiting Parser Thread");
   pthread_exit (NULL);
 }
 
@@ -3896,35 +3927,35 @@ vvas_app_destroy_pipeline_queues (PipelineContext * pipeline_ctx)
 {
   for (uint8_t idx = 0; idx < pipeline_ctx->num_streams; idx++) {
     if (pipeline_ctx->parser_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing Parser Queue[%u], %d",
+      VVAS_APP_DEBUG_LOG ("Freeing Parser Queue[%u], %d",
           idx, vvas_queue_get_length (pipeline_ctx->parser_out_queue[idx]));
       vvas_queue_free (pipeline_ctx->parser_out_queue[idx]);
       pipeline_ctx->parser_out_queue[idx] = NULL;
     }
 
     if (pipeline_ctx->decoder_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing Decoder Queue[%u], %d",
+      VVAS_APP_DEBUG_LOG ("Freeing Decoder Queue[%u], %d",
           idx, vvas_queue_get_length (pipeline_ctx->decoder_out_queue[idx]));
       vvas_queue_free (pipeline_ctx->decoder_out_queue[idx]);
       pipeline_ctx->decoder_out_queue[idx] = NULL;
     }
 
     if (pipeline_ctx->scaler_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing Scaler Queue[%u], %d",
+      VVAS_APP_DEBUG_LOG ("Freeing Scaler Queue[%u], %d",
           idx, vvas_queue_get_length (pipeline_ctx->scaler_out_queue[idx]));
       vvas_queue_free (pipeline_ctx->scaler_out_queue[idx]);
       pipeline_ctx->scaler_out_queue[idx] = NULL;
     }
 
     if (pipeline_ctx->defunnel_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing De-funnel Queue[%u], %d",
+      VVAS_APP_DEBUG_LOG ("Freeing De-funnel Queue[%u], %d",
           idx, vvas_queue_get_length (pipeline_ctx->defunnel_out_queue[idx]));
-       vvas_queue_free (pipeline_ctx->defunnel_out_queue[idx]);
-       pipeline_ctx->defunnel_out_queue[idx] = NULL;
+      vvas_queue_free (pipeline_ctx->defunnel_out_queue[idx]);
+      pipeline_ctx->defunnel_out_queue[idx] = NULL;
     }
 
     if (pipeline_ctx->overlay_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing Overlay Queue[%u], %d",
+      VVAS_APP_DEBUG_LOG ("Freeing Overlay Queue[%u], %d",
           idx, vvas_queue_get_length (pipeline_ctx->overlay_out_queue[idx]));
       vvas_queue_free (pipeline_ctx->overlay_out_queue[idx]);
       pipeline_ctx->overlay_out_queue[idx] = NULL;
@@ -3932,14 +3963,14 @@ vvas_app_destroy_pipeline_queues (PipelineContext * pipeline_ctx)
   }
 
   if (pipeline_ctx->funnel_out_queue) {
-    VVAS_APP_DEBUG_LOG ( "Freeing Funnel Queue, %d",
+    VVAS_APP_DEBUG_LOG ("Freeing Funnel Queue, %d",
         vvas_queue_get_length (pipeline_ctx->funnel_out_queue));
     vvas_queue_free (pipeline_ctx->funnel_out_queue);
     pipeline_ctx->funnel_out_queue = NULL;
   }
 
   if (pipeline_ctx->yolov3_out_queue) {
-    VVAS_APP_DEBUG_LOG ( "Freeing Yolov3 Queue, %d",
+    VVAS_APP_DEBUG_LOG ("Freeing Yolov3 Queue, %d",
         vvas_queue_get_length (pipeline_ctx->yolov3_out_queue));
     vvas_queue_free (pipeline_ctx->yolov3_out_queue);
     pipeline_ctx->yolov3_out_queue = NULL;
@@ -3954,8 +3985,8 @@ vvas_app_destroy_pipeline_queues (PipelineContext * pipeline_ctx)
 
   for (uint8_t idx = 0; idx < CAR_CLASSIFICATION_TYPE_MAX; idx++) {
     if (pipeline_ctx->resnet18_out_queue[idx]) {
-      VVAS_APP_DEBUG_LOG ( "Freeing Resnet18_%d Queue, %d",
-        idx, vvas_queue_get_length (pipeline_ctx->resnet18_out_queue[idx]));
+      VVAS_APP_DEBUG_LOG ("Freeing Resnet18_%d Queue, %d",
+          idx, vvas_queue_get_length (pipeline_ctx->resnet18_out_queue[idx]));
       vvas_queue_free (pipeline_ctx->resnet18_out_queue[idx]);
       pipeline_ctx->resnet18_out_queue[idx] = NULL;
     }
@@ -3972,22 +4003,22 @@ vvas_app_destroy_pipeline_queues (PipelineContext * pipeline_ctx)
  *
  */
 static void
-vvas_app_join_stream_threads (PipelineContext *pipeline_ctx, uint8_t stream_id)
+vvas_app_join_stream_threads (PipelineContext * pipeline_ctx, uint8_t stream_id)
 {
   pthread_join (pipeline_ctx->sink_thread[stream_id], NULL);
-  VVAS_APP_DEBUG_LOG ( "Sink thread[%hhu] joined", stream_id);
+  VVAS_APP_DEBUG_LOG ("Sink thread[%hhu] joined", stream_id);
 
   pthread_join (pipeline_ctx->overlay_thread[stream_id], NULL);
-  VVAS_APP_DEBUG_LOG ( "Overlay thread[%hhu] joined", stream_id);
+  VVAS_APP_DEBUG_LOG ("Overlay thread[%hhu] joined", stream_id);
 
   pthread_join (pipeline_ctx->scaler_thread[stream_id], NULL);
-  VVAS_APP_DEBUG_LOG ( "Scaler thread[%hhu] joined", stream_id);
+  VVAS_APP_DEBUG_LOG ("Scaler thread[%hhu] joined", stream_id);
 
   pthread_join (pipeline_ctx->decoder_thread[stream_id], NULL);
-  VVAS_APP_DEBUG_LOG ( "Decoder thread[%hhu] joined", stream_id);
+  VVAS_APP_DEBUG_LOG ("Decoder thread[%hhu] joined", stream_id);
 
   pthread_join (pipeline_ctx->parser_thread[stream_id], NULL);
-  VVAS_APP_DEBUG_LOG ( "Parser thread[%hhu] joined", stream_id);
+  VVAS_APP_DEBUG_LOG ("Parser thread[%hhu] joined", stream_id);
 }
 
 /**
@@ -3999,7 +4030,7 @@ vvas_app_join_stream_threads (PipelineContext *pipeline_ctx, uint8_t stream_id)
  *
  */
 static void
-vvas_app_join_pipeline_threads (PipelineContext *pipeline_ctx)
+vvas_app_join_pipeline_threads (PipelineContext * pipeline_ctx)
 {
   /* Join per stream threads */
   for (uint8_t idx = 0; idx < pipeline_ctx->num_streams; idx++) {
@@ -4009,20 +4040,20 @@ vvas_app_join_pipeline_threads (PipelineContext *pipeline_ctx)
   /* Join common threads */
   for (uint8_t idx = 0; idx < CAR_CLASSIFICATION_TYPE_MAX; idx++) {
     pthread_join (pipeline_ctx->resnet18_threads[idx], NULL);
-    VVAS_APP_DEBUG_LOG ( "Resnet18 thread[%hhu] joined", idx);
+    VVAS_APP_DEBUG_LOG ("Resnet18 thread[%hhu] joined", idx);
   }
 
   pthread_join (pipeline_ctx->defunnel_thread, NULL);
-  VVAS_APP_DEBUG_LOG ( "DeFunnel thread joined");
+  VVAS_APP_DEBUG_LOG ("DeFunnel thread joined");
 
   pthread_join (pipeline_ctx->yolov3_thread, NULL);
-  VVAS_APP_DEBUG_LOG ( "YoloV3 thread joined");
+  VVAS_APP_DEBUG_LOG ("YoloV3 thread joined");
 
   pthread_join (pipeline_ctx->crop_scaler_thread, NULL);
-  VVAS_APP_DEBUG_LOG ( "CropScaler thread joined");
+  VVAS_APP_DEBUG_LOG ("CropScaler thread joined");
 
   pthread_join (pipeline_ctx->funnel_thread, NULL);
-  VVAS_APP_DEBUG_LOG ( "Funnel thread joined");
+  VVAS_APP_DEBUG_LOG ("Funnel thread joined");
 }
 
 /**
@@ -4041,7 +4072,7 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
   do {
     uint8_t idx;
 
-    VVAS_APP_DEBUG_LOG ( "Creating Parser Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating Parser Out Queue");
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       /*
        * Parser thread reads from the file and feeds the decoder after
@@ -4056,7 +4087,7 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating Decoder Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating Decoder Out Queue");
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       pipeline_ctx->decoder_out_queue[idx] = vvas_queue_new (-1);
       if (!pipeline_ctx->decoder_out_queue[idx]) {
@@ -4065,7 +4096,7 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating Scaler Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating Scaler Out Queue");
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       pipeline_ctx->scaler_out_queue[idx] = vvas_queue_new (2);
       if (!pipeline_ctx->scaler_out_queue[idx]) {
@@ -4074,28 +4105,28 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating Funnel Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating Funnel Out Queue");
     pipeline_ctx->funnel_out_queue = vvas_queue_new (-1);
     if (!pipeline_ctx->funnel_out_queue) {
       VVAS_APP_DEBUG_LOG ("Couldn't create funnel out queue");
       break;
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating YOLOV3 Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating YOLOV3 Out Queue");
     pipeline_ctx->yolov3_out_queue = vvas_queue_new (-1);
     if (!pipeline_ctx->yolov3_out_queue) {
       VVAS_APP_DEBUG_LOG ("Couldn't create yolov3_out_queue");
       break;
     }
 
-    VVAS_APP_DEBUG_LOG("Creating CropScaler Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating CropScaler Out Queue");
     pipeline_ctx->crop_scaler_out_queue = vvas_queue_new (-1);
     if (!pipeline_ctx->crop_scaler_out_queue) {
-      VVAS_APP_DEBUG_LOG("Couldn't create crop_scaler_out_queue");
+      VVAS_APP_DEBUG_LOG ("Couldn't create crop_scaler_out_queue");
       break;
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating Resnet18 Out Queues");
+    VVAS_APP_DEBUG_LOG ("Creating Resnet18 Out Queues");
     for (idx = 0; idx < CAR_CLASSIFICATION_TYPE_MAX; idx++) {
       pipeline_ctx->resnet18_out_queue[idx] = vvas_queue_new (-1);
       if (!pipeline_ctx->resnet18_out_queue[idx]) {
@@ -4104,8 +4135,8 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating DeFunnel Out Queues");
-    for (idx = 0 ; idx < pipeline_ctx->num_streams; idx++) {
+    VVAS_APP_DEBUG_LOG ("Creating DeFunnel Out Queues");
+    for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       pipeline_ctx->defunnel_out_queue[idx] = vvas_queue_new (-1);
       if (!pipeline_ctx->defunnel_out_queue[idx]) {
         VVAS_APP_DEBUG_LOG ("Couldn't create DeFunnel out queue[%hhu]", idx);
@@ -4113,7 +4144,7 @@ vvas_app_create_pipeline_queues (PipelineContext * pipeline_ctx)
       }
     }
 
-    VVAS_APP_DEBUG_LOG ( "Creating Overlay Out Queue");
+    VVAS_APP_DEBUG_LOG ("Creating Overlay Out Queue");
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       pipeline_ctx->overlay_out_queue[idx] = vvas_queue_new (-1);
       if (!pipeline_ctx->overlay_out_queue[idx]) {
@@ -4142,12 +4173,12 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
 
   do {
     uint8_t idx;
-    char thread_name[16] = {0};
+    char thread_name[16] = { 0 };
 
     /* Start Sink threads */
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       ThreadData *sink_thread_data;
-      sink_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      sink_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!sink_thread_data) {
         break;
       }
@@ -4157,7 +4188,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, sink_thread_data->instance_id);
 
       if (!vvas_app_create_thread (thread_name, vvas_sink_thread,
-          &pipeline_ctx->sink_thread[idx], sink_thread_data)) {
+              &pipeline_ctx->sink_thread[idx], sink_thread_data)) {
         break;
       }
       pipeline_ctx->is_sink_thread_alive[idx] = true;
@@ -4166,7 +4197,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
     /* Start Overlay threads */
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       ThreadData *overlay_thread_data;
-      overlay_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      overlay_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!overlay_thread_data) {
         break;
       }
@@ -4176,14 +4207,14 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, overlay_thread_data->instance_id);
 
       if (!vvas_app_create_thread (thread_name, vvas_overlay_thread,
-          &pipeline_ctx->overlay_thread[idx], overlay_thread_data)) {
+              &pipeline_ctx->overlay_thread[idx], overlay_thread_data)) {
         break;
       }
     }
 
     /* Create de-funnel thread */
     ThreadData *defunnel_thread_data;
-    defunnel_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+    defunnel_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
     if (!defunnel_thread_data) {
       break;
     }
@@ -4193,14 +4224,14 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
         pipeline_ctx->instance_id);
 
     if (!vvas_app_create_thread (thread_name, vvas_defunnel_thread,
-        &pipeline_ctx->defunnel_thread, defunnel_thread_data)) {
+            &pipeline_ctx->defunnel_thread, defunnel_thread_data)) {
       break;
     }
 
     /* Start Resnet18 classification threads */
     for (int idx = 0; idx < CAR_CLASSIFICATION_TYPE_MAX; idx++) {
       ThreadData *resnet18_thread_data;
-      resnet18_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      resnet18_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!resnet18_thread_data) {
         break;
       }
@@ -4211,14 +4242,14 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, idx);
 
       if (!vvas_app_create_thread (thread_name, vvas_resnet18_thread,
-          &pipeline_ctx->resnet18_threads[idx], resnet18_thread_data)) {
+              &pipeline_ctx->resnet18_threads[idx], resnet18_thread_data)) {
         break;
       }
     }
 
     /* Create CropScaler thread */
     ThreadData *crop_scaler_thread_data;
-    crop_scaler_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+    crop_scaler_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
     if (!crop_scaler_thread_data) {
       break;
     }
@@ -4228,13 +4259,13 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
         pipeline_ctx->instance_id);
 
     if (!vvas_app_create_thread (thread_name, vvas_crop_scale_thread,
-        &pipeline_ctx->crop_scaler_thread, crop_scaler_thread_data)) {
+            &pipeline_ctx->crop_scaler_thread, crop_scaler_thread_data)) {
       break;
     }
 
     /* Create Yolov3 detection thread */
     ThreadData *yolov3_thread_data;
-    yolov3_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+    yolov3_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
     if (!yolov3_thread_data) {
       break;
     }
@@ -4244,13 +4275,13 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
         pipeline_ctx->instance_id);
 
     if (!vvas_app_create_thread (thread_name, vvas_yolov3_thread,
-        &pipeline_ctx->yolov3_thread, yolov3_thread_data)) {
+            &pipeline_ctx->yolov3_thread, yolov3_thread_data)) {
       break;
     }
 
     /* Start Funnel thread */
     ThreadData *funnel_thread_data;
-    funnel_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+    funnel_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
     if (!funnel_thread_data) {
       break;
     }
@@ -4260,14 +4291,14 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
         pipeline_ctx->instance_id);
 
     if (!vvas_app_create_thread (thread_name, vvas_funnel_thread,
-        &pipeline_ctx->funnel_thread, funnel_thread_data)) {
+            &pipeline_ctx->funnel_thread, funnel_thread_data)) {
       break;
     }
 
     /* Start Scaler Thread */
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       ThreadData *scaler_thread_data;
-      scaler_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      scaler_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!scaler_thread_data) {
         break;
       }
@@ -4277,7 +4308,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, scaler_thread_data->instance_id);
 
       if (!vvas_app_create_thread (thread_name, vvas_scaler_thread,
-          &pipeline_ctx->scaler_thread[idx], scaler_thread_data)) {
+              &pipeline_ctx->scaler_thread[idx], scaler_thread_data)) {
         break;
       }
     }
@@ -4285,7 +4316,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
     /* Start Decoder thread */
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       ThreadData *decoder_thread_data;
-      decoder_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      decoder_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!decoder_thread_data) {
         break;
       }
@@ -4295,7 +4326,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, decoder_thread_data->instance_id);
 
       if (!vvas_app_create_thread (thread_name, vvas_decoder_thread,
-          &pipeline_ctx->decoder_thread[idx], decoder_thread_data)) {
+              &pipeline_ctx->decoder_thread[idx], decoder_thread_data)) {
         break;
       }
     }
@@ -4303,7 +4334,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
     /* Start Parser thread */
     for (idx = 0; idx < pipeline_ctx->num_streams; idx++) {
       ThreadData *parser_thread_data;
-      parser_thread_data = (ThreadData*) calloc (1, sizeof(ThreadData));
+      parser_thread_data = (ThreadData *) calloc (1, sizeof (ThreadData));
       if (!parser_thread_data) {
         break;
       }
@@ -4313,7 +4344,7 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
           pipeline_ctx->instance_id, parser_thread_data->instance_id);
 
       if (!vvas_app_create_thread (thread_name, vvas_parser_thread,
-          &pipeline_ctx->parser_thread[idx], parser_thread_data)) {
+              &pipeline_ctx->parser_thread[idx], parser_thread_data)) {
         break;
       }
     }
@@ -4334,12 +4365,12 @@ vvas_app_create_pipeline_threads (PipelineContext * pipeline_ctx)
  *
  */
 static bool
-all_sink_dead (PipelineContext *pipeline_ctx)
+all_sink_dead (PipelineContext * pipeline_ctx)
 {
   bool all_dead = true;
   pthread_mutex_lock (&pipeline_ctx->pipeline_lock);
   for (uint8_t idx = 0; idx < pipeline_ctx->num_streams; idx++) {
-    if (pipeline_ctx->is_sink_thread_alive[idx]){
+    if (pipeline_ctx->is_sink_thread_alive[idx]) {
       all_dead = false;
     }
   }
@@ -4368,22 +4399,22 @@ static void *
 vvas_pipeline_launcher_thread (void *args)
 {
   PipelineContext *pipeline_ctx = (PipelineContext *) args;
-  VvasClockTime last_ts[MAX_STREAMS_PER_PIPELINE] = {0},
-      sink_start_ts[MAX_STREAMS_PER_PIPELINE] = {0};
+  VvasClockTime last_ts[MAX_STREAMS_PER_PIPELINE] = { 0 },
+      sink_start_ts[MAX_STREAMS_PER_PIPELINE] = { 0 };
 
   VvasClockTime fps_display_intrvl = fps_display_interval * SECOND_IN_MS;
 
-  uint64_t last_frame_rendered[MAX_STREAMS_PER_PIPELINE] = {0};
-  bool fps_calculatation_stated[MAX_STREAMS_PER_PIPELINE] = {false};
+  uint64_t last_frame_rendered[MAX_STREAMS_PER_PIPELINE] = { 0 };
+  bool fps_calculatation_stated[MAX_STREAMS_PER_PIPELINE] = { false };
   bool got_interrupt = false;
 
   if (0 == pipeline_ctx->num_streams) {
-    VVAS_APP_ERROR_LOG ( "No Stream, exiting");
+    VVAS_APP_ERROR_LOG ("No Stream, exiting");
     pthread_exit (NULL);
   }
 
-  if (pipeline_ctx->num_streams >  MAX_STREAMS_PER_PIPELINE) {
-    VVAS_APP_ERROR_LOG ( "No. of streams > %d, only playing %d streams",
+  if (pipeline_ctx->num_streams > MAX_STREAMS_PER_PIPELINE) {
+    VVAS_APP_ERROR_LOG ("No. of streams > %d, only playing %d streams",
         MAX_STREAMS_PER_PIPELINE, MAX_STREAMS_PER_PIPELINE);
     pipeline_ctx->num_streams = MAX_STREAMS_PER_PIPELINE;
   }
@@ -4409,7 +4440,7 @@ vvas_pipeline_launcher_thread (void *args)
   pthread_mutex_unlock (&global_mutex);
 
   if (got_interrupt) {
-    VVAS_APP_INFO_LOG ( "Got interrupt before starting the pipeline");
+    VVAS_APP_INFO_LOG ("Got interrupt before starting the pipeline");
     goto error;
   }
 
@@ -4417,13 +4448,13 @@ vvas_pipeline_launcher_thread (void *args)
   if (!vvas_app_create_pipeline_queues (pipeline_ctx)) {
     goto error;
   }
-  VVAS_APP_DEBUG_LOG ( "All Queues are created");
+  VVAS_APP_DEBUG_LOG ("All Queues are created");
 
   /* Start all pipeline threads */
   if (!vvas_app_create_pipeline_threads (pipeline_ctx)) {
     goto error;
   }
-  VVAS_APP_DEBUG_LOG ( "All threads are created");
+  VVAS_APP_DEBUG_LOG ("All threads are created");
 
   /* Loop untill all the sinks are playing, calculate and display their FPS */
   while (true) {
@@ -4439,9 +4470,9 @@ vvas_pipeline_launcher_thread (void *args)
 
       /* If all sinks are dead, break the loop */
       if (all_sink_dead (pipeline_ctx)) {
-        VVAS_APP_DEBUG_LOG ( "All sinks are dead now");
+        VVAS_APP_DEBUG_LOG ("All sinks are dead now");
         break_loop = true;
-        break;  /* Breaking for loop */
+        break;                  /* Breaking for loop */
       }
 
       /* This sink is dead now, no need to calculate its FPS */
@@ -4466,7 +4497,7 @@ vvas_pipeline_launcher_thread (void *args)
           double diff_time, elapsed_time;
           double current_fps, average_fps;
 
-          now = vvas_get_clocktime();
+          now = vvas_get_clocktime ();
           if ((now - last_ts[idx]) > fps_display_intrvl) {
             /* Calculate and display FPS */
             diff_time = (double) (now - last_ts[idx]) / SECOND_IN_NS;
@@ -4486,22 +4517,22 @@ vvas_pipeline_launcher_thread (void *args)
           }
         }
       }
-    }   /* End of for loop */
+    }                           /* End of for loop */
     if (break_loop) {
-      break; /* Breaking main while loop */
+      break;                    /* Breaking main while loop */
     }
     usleep (fps_display_intrvl * 1000);
-  } /* End of while loop */
+  }                             /* End of while loop */
 
 error:
 
   /* All threads must have exited, let's join them */
   vvas_app_join_pipeline_threads (pipeline_ctx);
-  VVAS_APP_DEBUG_LOG ( "All threads joined");
+  VVAS_APP_DEBUG_LOG ("All threads joined");
 
   /* Free all thread coupling queues */
   vvas_app_destroy_pipeline_queues (pipeline_ctx);
-  VVAS_APP_DEBUG_LOG ( "All queues destroyed, exiting");
+  VVAS_APP_DEBUG_LOG ("All queues destroyed, exiting");
 
   /* Destroy mutexes */
   for (uint8_t idx = 0; idx < pipeline_ctx->num_streams; idx++) {
@@ -4509,7 +4540,7 @@ error:
   }
   pthread_mutex_destroy (&pipeline_ctx->pipeline_lock);
 
-  VVAS_APP_DEBUG_LOG ( "Exiting launcher thread");
+  VVAS_APP_DEBUG_LOG ("Exiting launcher thread");
 
   free (pipeline_ctx);
   pthread_exit (NULL);
@@ -4552,18 +4583,22 @@ vvas_app_free_global_contexts ()
     if (metaconvert_cfg.allowed_labels_count) {
       for (uint32_t idx = 0; idx < metaconvert_cfg.allowed_labels_count; idx++) {
         free (metaconvert_cfg.allowed_labels[idx]);
+        metaconvert_cfg.allowed_labels[idx] = NULL;
       }
     }
     free (metaconvert_cfg.allowed_labels);
+    metaconvert_cfg.allowed_labels = NULL;
   }
 
   if (metaconvert_cfg.allowed_classes) {
     if (metaconvert_cfg.allowed_classes_count) {
       for (uint32_t idx = 0; idx < metaconvert_cfg.allowed_classes_count; idx++) {
         free (metaconvert_cfg.allowed_classes[idx]);
+        metaconvert_cfg.allowed_classes[idx] = NULL;
       }
     }
     free (metaconvert_cfg.allowed_classes);
+    metaconvert_cfg.allowed_classes = NULL;
   }
 
   free_dpuinfer_conf (&yolov3_config);
@@ -4582,7 +4617,7 @@ vvas_app_free_global_contexts ()
 int
 main (int argc, char *argv[])
 {
-  Thread launcher_threads[256] = {0};
+  Thread launcher_threads[256] = { 0 };
   uint8_t launcher_thread_counter = 0;
   char *mjson_path = NULL;
   int32_t ret = -1;
@@ -4592,7 +4627,7 @@ main (int argc, char *argv[])
 
   /* Note start time of the application, others logs are with reference to
    * this time. */
-  app_start_time = vvas_get_clocktime();
+  app_start_time = vvas_get_clocktime ();
 
   /* Add SIGINT handler to handle Ctrl + C */
   struct sigaction sighact = { 0 };
@@ -4667,7 +4702,7 @@ main (int argc, char *argv[])
     pipeline_ctx->instance_id = launcher_thread_counter;
 
     for (int32_t i = 0; i < MAX_STREAMS_PER_PIPELINE; i++) {
-      char * in_file = (char *) vvas_list_nth_data (input_files, offset + i);
+      char *in_file = (char *) vvas_list_nth_data (input_files, offset + i);
       pipeline_ctx->input_file[i] = in_file;
       pipeline_ctx->num_streams++;
     }
@@ -4697,7 +4732,7 @@ main (int argc, char *argv[])
     pipeline_ctx->instance_id = launcher_thread_counter;
 
     for (uint32_t i = 0; i < num_partial_pipeline_streams; i++) {
-      char * in_file = (char *) vvas_list_nth_data (input_files, offset + i);
+      char *in_file = (char *) vvas_list_nth_data (input_files, offset + i);
       pipeline_ctx->input_file[i] = in_file;
       pipeline_ctx->num_streams++;
     }

@@ -18,9 +18,10 @@
 
  
 /** 
- *DOC: VVAS Hash API's
- *Contains API's for handling HashMap related operations.
+ * DOC: VVAS Hash APIs
+ * This file contains APIs for handling HashMap related operations.
  */
+
 #ifndef __VVAS_HASH_H__
 #define __VVAS_HASH_H__
 

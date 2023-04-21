@@ -386,7 +386,7 @@ print_topk (const std::vector < std::pair < int, float >>&topk,
     VvasInferPrediction ** dst, int log_level, char *model_name)
 {
   VvasInferPrediction *parent_predict = NULL;
-  VvasBoundingBox child_bbox;
+  VvasBoundingBox child_bbox = { 0 };
   VvasInferPrediction *child_predict;
 
   for (const auto & v:topk) {
@@ -613,6 +613,12 @@ error:
 VvasReturnType vvas_postprocess_destroy (VvasPostProcessor * postproc_handle)
 {
   VvasPostProcessPriv *kpriv = (VvasPostProcessPriv *)postproc_handle;
+
+  if (!kpriv) {
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "Invalid handle");
+    return VVAS_RET_ERROR;
+  }
+
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "destroying");
 
   if (kpriv)
@@ -625,10 +631,15 @@ VvasInferPrediction* vvas_postprocess_tensor (VvasPostProcessor *postproc_handle
 {
   VvasPostProcessPriv *kpriv = (VvasPostProcessPriv *)postproc_handle;
   VvasInferPrediction *parent_predict = NULL;
-  VvasBoundingBox parent_bbox;
-  VvasBoundingBox child_bbox;
-  VvasInferPrediction *child_predict;
+  VvasBoundingBox parent_bbox = { 0 };
+  VvasBoundingBox child_bbox = { 0 };
+  VvasInferPrediction *child_predict = NULL;
   VvasInferClassification *c = NULL;
+
+  if (!kpriv) {
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "Invalid handle");
+    return parent_predict;
+  }
 
   if (!src)
   {

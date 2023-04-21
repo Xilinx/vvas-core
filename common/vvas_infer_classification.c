@@ -201,11 +201,14 @@ void vvas_inferclassification_free(VvasInferClassification *self)
  */
 VvasInferClassification* vvas_inferclassification_copy(const VvasInferClassification *self)
 { 
-  VvasInferClassification *copy = vvas_inferclassification_new();
+  VvasInferClassification *copy = NULL;
 
-  if((NULL != self) &&
-     (NULL != copy)) {
-    
+  if (self) {
+    copy = vvas_inferclassification_new ();
+    if (!copy) {
+      LOG_E(" Failed to allocate memory");
+      return copy;
+    }
     copy->classification_id = self->classification_id;
     copy->class_id = self->class_id;
     copy->class_prob = self->class_prob;
@@ -218,11 +221,6 @@ VvasInferClassification* vvas_inferclassification_copy(const VvasInferClassifica
       copy->class_label = strdup(self->class_label);
     copy->labels = vvas_inferclassification_copy_labels(self->labels);
     copy->probabilities = vvas_inferclassification_copy_probabilities(self->probabilities, self->num_classes);
-   
-  }
-  else {
-    LOG_E("Null recevied");
-    return NULL;
   }
   
   return copy;

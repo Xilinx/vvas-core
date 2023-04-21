@@ -53,26 +53,26 @@ typedef struct
 {
   const char *name;
   VvasVideoFormat value;
-}VvasColorFmtMap;
+} VvasColorFmtMap;
 
-VvasColorFmtMap fmt_map [] = {
-    {"VVAS_VIDEO_FORMAT_Y_UV8_420", VVAS_VIDEO_FORMAT_Y_UV8_420},
-    {"VVAS_VIDEO_FORMAT_RGBx", VVAS_VIDEO_FORMAT_RGBx},
-    {"VVAS_VIDEO_FORMAT_r210", VVAS_VIDEO_FORMAT_r210},
-    {"VVAS_VIDEO_FORMAT_Y410", VVAS_VIDEO_FORMAT_Y410},
-    {"VVAS_VIDEO_FORMAT_BGRx", VVAS_VIDEO_FORMAT_BGRx},
-    {"VVAS_VIDEO_FORMAT_BGRA", VVAS_VIDEO_FORMAT_BGRA},
-    {"VVAS_VIDEO_FORMAT_RGBA", VVAS_VIDEO_FORMAT_RGBA},
-    {"VVAS_VIDEO_FORMAT_YUY2", VVAS_VIDEO_FORMAT_YUY2},
-    {"VVAS_VIDEO_FORMAT_NV16", VVAS_VIDEO_FORMAT_NV16},
-    {"VVAS_VIDEO_FORMAT_RGB", VVAS_VIDEO_FORMAT_RGB},
-    {"VVAS_VIDEO_FORMAT_v308", VVAS_VIDEO_FORMAT_v308},
-    {"VVAS_VIDEO_FORMAT_BGR", VVAS_VIDEO_FORMAT_BGR},
-    {"VVAS_VIDEO_FORMAT_I422_10LE", VVAS_VIDEO_FORMAT_I422_10LE},
-    {"VVAS_VIDEO_FORMAT_NV12_10LE32", VVAS_VIDEO_FORMAT_NV12_10LE32},
-    {"VVAS_VIDEO_FORMAT_GRAY8", VVAS_VIDEO_FORMAT_GRAY8},
-    {"VVAS_VIDEO_FORMAT_GRAY10_LE32", VVAS_VIDEO_FORMAT_GRAY10_LE32},
-    {"VVAS_VIDEO_FORMAT_I420", VVAS_VIDEO_FORMAT_I420}
+VvasColorFmtMap fmt_map[] = {
+  {"VVAS_VIDEO_FORMAT_Y_UV8_420", VVAS_VIDEO_FORMAT_Y_UV8_420},
+  {"VVAS_VIDEO_FORMAT_RGBx", VVAS_VIDEO_FORMAT_RGBx},
+  {"VVAS_VIDEO_FORMAT_r210", VVAS_VIDEO_FORMAT_r210},
+  {"VVAS_VIDEO_FORMAT_Y410", VVAS_VIDEO_FORMAT_Y410},
+  {"VVAS_VIDEO_FORMAT_BGRx", VVAS_VIDEO_FORMAT_BGRx},
+  {"VVAS_VIDEO_FORMAT_BGRA", VVAS_VIDEO_FORMAT_BGRA},
+  {"VVAS_VIDEO_FORMAT_RGBA", VVAS_VIDEO_FORMAT_RGBA},
+  {"VVAS_VIDEO_FORMAT_YUY2", VVAS_VIDEO_FORMAT_YUY2},
+  {"VVAS_VIDEO_FORMAT_NV16", VVAS_VIDEO_FORMAT_NV16},
+  {"VVAS_VIDEO_FORMAT_RGB", VVAS_VIDEO_FORMAT_RGB},
+  {"VVAS_VIDEO_FORMAT_v308", VVAS_VIDEO_FORMAT_v308},
+  {"VVAS_VIDEO_FORMAT_BGR", VVAS_VIDEO_FORMAT_BGR},
+  {"VVAS_VIDEO_FORMAT_I422_10LE", VVAS_VIDEO_FORMAT_I422_10LE},
+  {"VVAS_VIDEO_FORMAT_NV12_10LE32", VVAS_VIDEO_FORMAT_NV12_10LE32},
+  {"VVAS_VIDEO_FORMAT_GRAY8", VVAS_VIDEO_FORMAT_GRAY8},
+  {"VVAS_VIDEO_FORMAT_GRAY10_LE32", VVAS_VIDEO_FORMAT_GRAY10_LE32},
+  {"VVAS_VIDEO_FORMAT_I420", VVAS_VIDEO_FORMAT_I420}
 };
 
 /** @struct VvasScalerPrivate
@@ -96,14 +96,15 @@ typedef struct
  *  @brief Parses configuration file and populates \p prop structure with supported color formats
  */
 static VvasReturnType
-parse_scaler_conf_file (const char *conf_path, VvasScalerProp *prop)
+parse_scaler_conf_file (const char *conf_path, VvasScalerProp * prop)
 {
   FILE *fp = NULL;
   char buff[CONF_STR_MAX_LENGTH];
   uint8_t have_fmt_group = 0;
 
   prop->n_fmts = 0;
-  memset(prop->supported_fmts, 0x0, sizeof(VvasVideoFormat)*VVAS_SCALER_MAX_SUPPORT_FMT);
+  memset (prop->supported_fmts, 0x0,
+      sizeof (VvasVideoFormat) * VVAS_SCALER_MAX_SUPPORT_FMT);
 
   fp = fopen (conf_path, "r");
   if (!fp) {
@@ -119,7 +120,7 @@ parse_scaler_conf_file (const char *conf_path, VvasScalerProp *prop)
 
     sret = fgets (buff, CONF_STR_MAX_LENGTH, fp);
 
-    if (!strncmp(buff, "[color-formats]", strlen("[color-formats]"))) {
+    if (!strncmp (buff, "[color-formats]", strlen ("[color-formats]"))) {
       have_fmt_group = 1;
       memset (buff, 0x0, CONF_STR_MAX_LENGTH);
       continue;
@@ -127,9 +128,9 @@ parse_scaler_conf_file (const char *conf_path, VvasScalerProp *prop)
     if (have_fmt_group) {
       int i, n_fmt;
 
-      n_fmt = sizeof (fmt_map)/sizeof(fmt_map[0]);
+      n_fmt = sizeof (fmt_map) / sizeof (fmt_map[0]);
       for (i = 0; i < n_fmt; i++) {
-        if (!strncmp(buff, fmt_map[i].name, strlen(fmt_map[i].name))) {
+        if (!strncmp (buff, fmt_map[i].name, strlen (fmt_map[i].name))) {
           prop->supported_fmts[prop->n_fmts++] = fmt_map[i].value;
         }
       }
@@ -329,75 +330,85 @@ error:
  */
 VvasReturnType
 vvas_scaler_channel_add (VvasScaler * hndl,
-    VvasScalerRect * src_rect, VvasScalerRect * dst_rect, VvasScalerPpe * ppe, VvasScalerParam * param)
+    VvasScalerRect * src_rect, VvasScalerRect * dst_rect, VvasScalerPpe * ppe,
+    VvasScalerParam * param)
 {
   VvasScalerPrivate *self;
   VvasReturnType ret = VVAS_RET_ERROR;
-  uint16_t dy = dst_rect->height;
-  uint16_t dx = dst_rect->width;
+  uint16_t dy;
+  uint16_t dx;
   double in_ratio;
   double out_ratio;
   uint16_t in_scaleup_width;
   uint16_t in_scaleup_height;
 
-  if (!hndl || !src_rect || !dst_rect) {
+  if (!hndl || !src_rect || !dst_rect || !src_rect->width || !dst_rect->width) {
     return VVAS_RET_INVALID_ARGS;
   }
+
+  dy = dst_rect->height;
+  dx = dst_rect->width;
+
   /* Update the source and dest rect param based on scaler type */
   if (param && param->type != VVAS_SCALER_DEFAULT) {
-      if (param->type == VVAS_SCALER_LETTERBOX) {
-        /* Calculate the input frame scale ratio */
-        in_ratio = (double) src_rect->height / (double) src_rect->width;
-        /*Calculate the output frame scale ratio */
-        out_ratio = (double) dst_rect->height / (double) dst_rect->width;
-         
-        if (in_ratio < out_ratio) {
-          /* update the height based on input scale ratio */
-          dst_rect->height = (uint16_t) ((double)dst_rect->width * in_ratio);
-        } else {
-          /* update the width based on input scale ratio */
-          dst_rect->width = (uint16_t) ((double)dst_rect->height / in_ratio);
-        }
-      } else if (param->type == VVAS_SCALER_ENVELOPE_CROPPED) {
-        /* Calculate the scale ratio with respect to smallest side */
-        in_ratio = (double) param->smallest_side_num / (double) (src_rect->height < src_rect->width ? src_rect->height : src_rect->width);
-        /* Calculate the width and height based on scale ratio with respect to src frame */
-        in_scaleup_width = (uint16_t) ((double) dst_rect->width / in_ratio);
-        in_scaleup_height = (uint16_t) ((double) dst_rect->height / in_ratio);
-        /* Cropping center image with calculated width and height from src image */
-        src_rect->x = (src_rect->width - in_scaleup_width)/2;
-        src_rect->y = (src_rect->height - in_scaleup_height)/2;
-        src_rect->width = in_scaleup_width;
-        src_rect->height = in_scaleup_height;
+    if (param->type == VVAS_SCALER_LETTERBOX) {
+      /* Calculate the input frame scale ratio */
+      in_ratio = (double) src_rect->height / (double) src_rect->width;
+      /*Calculate the output frame scale ratio */
+      out_ratio = (double) dst_rect->height / (double) dst_rect->width;
+
+      if (in_ratio < out_ratio) {
+        /* update the height based on input scale ratio */
+        dst_rect->height = (uint16_t) ((double) dst_rect->width * in_ratio);
       } else {
-        LOG_ERROR (DEFAULT_LOG_LEVEL, "Invalid Scaler Type");
-        return VVAS_RET_INVALID_ARGS;
+        /* update the width based on input scale ratio */
+        dst_rect->width = (uint16_t) ((double) dst_rect->height / in_ratio);
       }
-      /* Update the horizontal alignment */
-      if (param->horz_align == VVAS_SCALER_HORZ_ALIGN_LEFT) {
-        dst_rect->x = 0;
-      } else if (param->horz_align == VVAS_SCALER_HORZ_ALIGN_RIGHT) {
-        dst_rect->x = (dx - dst_rect->width);
-      } else if (param->horz_align == VVAS_SCALER_HORZ_ALIGN_CENTER) {
-        dst_rect->x = (dx - dst_rect->width)/2;
-      } else {
+    } else if (param->type == VVAS_SCALER_ENVELOPE_CROPPED) {
+      /* Calculate the scale ratio with respect to smallest side */
+      in_ratio =
+          (double) param->smallest_side_num / (double) (src_rect->height <
+          src_rect->width ? src_rect->height : src_rect->width);
+      /* Calculate the width and height based on scale ratio with respect to src frame */
+      in_scaleup_width = (uint16_t) ((double) dst_rect->width / in_ratio);
+      in_scaleup_height = (uint16_t) ((double) dst_rect->height / in_ratio);
+      /* Cropping center image with calculated width and height from src image */
+      src_rect->x = (src_rect->width - in_scaleup_width) / 2;
+      src_rect->y = (src_rect->height - in_scaleup_height) / 2;
+      src_rect->width = in_scaleup_width;
+      src_rect->height = in_scaleup_height;
+    } else {
+      LOG_ERROR (DEFAULT_LOG_LEVEL, "Invalid Scaler Type");
+      return VVAS_RET_INVALID_ARGS;
+    }
+    /* Update the horizontal alignment */
+    switch (param->horz_align) {
+      case VVAS_SCALER_HORZ_ALIGN_LEFT:
+        break;
+      case VVAS_SCALER_HORZ_ALIGN_RIGHT:
+        dst_rect->x += (dx - dst_rect->width);
+        break;
+      case VVAS_SCALER_HORZ_ALIGN_CENTER:
+        dst_rect->x += (dx - dst_rect->width)/2;
+        break;
+      default:
         LOG_ERROR (DEFAULT_LOG_LEVEL, "Invalid Scaler Horizontal Alignment Type");
         return VVAS_RET_INVALID_ARGS;
-      }
-      /* Update the vertical alignment */
-      if (param->vert_align == VVAS_SCALER_VERT_ALIGN_TOP) {
-        dst_rect->y = 0;
-      } else if (param->vert_align == VVAS_SCALER_VERT_ALIGN_BOTTOM) {
-        dst_rect->y = (dy - dst_rect->height);
-      } else if (param->vert_align == VVAS_SCALER_VERT_ALIGN_CENTER) {
-        dst_rect->y = (dy - dst_rect->height)/2;
-      } else {
+    }
+    /* Update the vertical alignment */
+    switch (param->vert_align) {
+      case VVAS_SCALER_VERT_ALIGN_TOP:
+        break;
+      case VVAS_SCALER_VERT_ALIGN_BOTTOM:
+        dst_rect->y += (dy - dst_rect->height);
+        break;
+      case VVAS_SCALER_VERT_ALIGN_CENTER:
+        dst_rect->y += (dy - dst_rect->height)/2;
+        break;
+      default:
         LOG_ERROR (DEFAULT_LOG_LEVEL, "Invalid Scaler Vertical Alignment Type");
         return VVAS_RET_INVALID_ARGS;
-      }
-      /* Dest rect y-cordinate needs to align by 2 */
-      if (dst_rect->y % 2)
-        --dst_rect->y;
+    }
   }
 
   self = (VvasScalerPrivate *) hndl;
@@ -405,7 +416,7 @@ vvas_scaler_channel_add (VvasScaler * hndl,
   if (self->scaler_interface->vvas_scaler_channel_add_impl) {
     ret =
         self->scaler_interface->vvas_scaler_channel_add_impl (self->
-        scaler_instance, src_rect, dst_rect, ppe);
+        scaler_instance, src_rect, dst_rect, ppe, param);
   } else {
     LOG_ERROR (DEFAULT_LOG_LEVEL,
         "channel add is not implemented by the scaler library");
@@ -538,8 +549,14 @@ vvas_scaler_prop_get (VvasScaler * hndl, VvasScalerProp * prop)
     self = (VvasScalerPrivate *) hndl;
 
     if (self->scaler_interface->vvas_scaler_prop_get_impl) {
-      ret = self->scaler_interface->
+      ret =
+          self->scaler_interface->
           vvas_scaler_prop_get_impl (self->scaler_instance, prop);
+      if (ret != VVAS_RET_SUCCESS) {
+        LOG_ERROR (DEFAULT_LOG_LEVEL,
+            "Failed to get property from scaler library");
+        return ret;
+      }
     } else {
       LOG_ERROR (DEFAULT_LOG_LEVEL,
           "Get Property is not implemented by the scaler library");

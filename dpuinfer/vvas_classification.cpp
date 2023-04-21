@@ -39,8 +39,8 @@ vvas_classification::run (void * handle, std::vector < cv::Mat > & images, VvasI
     LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
         "image[%d].scores.size = %lu", i, results[i].scores.size ());
     if (results[i].scores.size ()) {
-      VvasBoundingBox parent_bbox;
-      VvasBoundingBox child_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
+      VvasBoundingBox child_bbox = { 0 };
       VvasInferPrediction *child_predict;
 
       int cols = images[i].cols;
@@ -78,28 +78,30 @@ vvas_classification::run (void * handle, std::vector < cv::Mat > & images, VvasI
         if (parent_predict->node == NULL) {
           LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
               "parent_predict->predictions is NULL");
-	  }
+	      }
 
-          LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level,
-              " r.index %d %s, r.score, %f", r.index,
-              results[i].lookup (r.index), r.score);
-        }
-        /* add class and name in prediction node */
-        child_predict->model_class = (VvasClass) kpriv->modelclass;
-        child_predict->model_name = strdup (kpriv->modelname.c_str ());
-        vvas_inferprediction_append (parent_predict, child_predict);
-
-        pstr = vvas_inferprediction_to_string (parent_predict);
-        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-            pstr);
-          free (pstr);
+        LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level,
+          " r.index %d %s, r.score, %f", r.index, results[i].lookup (r.index),
+          r.score);
       }
+      /* add class and name in prediction node */
+      child_predict->model_class = (VvasClass) kpriv->modelclass;
+      child_predict->model_name = strdup (kpriv->modelname.c_str ());
+      vvas_inferprediction_append (parent_predict, child_predict);
 
-      predictions[i] = parent_predict;
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
     }
-    LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level, " ");
-    return true;
+    predictions[i] = parent_predict;
   }
+
+  LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level, " ");
+  return true;
+}
 
 int
 vvas_classification::requiredwidth (void)

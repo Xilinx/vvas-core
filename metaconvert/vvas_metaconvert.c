@@ -43,6 +43,10 @@ typedef struct
 bool vvas_metaconvert_consider_child (VvasMetaConvert * meta_convert,
     VvasTreeNode * child);
 
+int vvas_metaconvert_set_color_for_allowed_classes (VvasMetaConvertPriv * priv,
+    VvasInferClassification * classification, uint8_t * do_mask,
+    VvasRGBColor * clr);
+
 static inline char *
 append_string (const char *str1, const char *str2)
 {
@@ -74,6 +78,8 @@ prepare_label_string (VvasMetaConvertPriv * priv,
       char *save_ptr = NULL;
 
       first_label = strtok_r (classification->class_label, ",", &save_ptr);
+      if (!first_label)
+        continue;
 
       if (!cur_label_string)
         cur_label_string = strdup (first_label);
@@ -383,7 +389,8 @@ convert_pose_detection_meta (VvasMetaConvertPriv * priv, VvasTreeNode * node,
   }
 
   for (num = shape_info->num_lines;
-      num < ((sizeof (Pose14Pt) / sizeof (Pointf)) + shape_info->num_lines);
+      head
+      && num < ((sizeof (Pose14Pt) / sizeof (Pointf)) + shape_info->num_lines);
       num++) {
     VvasOverlayColorData *line_color;
     line_params = (VvasOverlayLineParams *) head->data;
@@ -497,6 +504,7 @@ convert_road_line_meta (VvasMetaConvertPriv * priv, VvasTreeNode * node,
     if (!poly_pts) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
           "failed to allocate memory");
+      free (polygn_params);
       return VVAS_RET_ALLOC_ERROR;
     }
     poly_pts->x = pt_ptr->x;
@@ -547,6 +555,9 @@ convert_ultrafast_meta (VvasMetaConvertPriv * priv, VvasTreeNode * node,
     VvasOverlayCircleParams *circle_params = NULL;
     VvasOverlayColorData *circle_color = NULL;
 
+    if (pt_ptr->x < 0)
+      continue;
+
     circle_params =
         (VvasOverlayCircleParams *) calloc (1,
         sizeof (VvasOverlayCircleParams));
@@ -558,8 +569,6 @@ convert_ultrafast_meta (VvasMetaConvertPriv * priv, VvasTreeNode * node,
 
     circle_color = &(circle_params->circle_color);
 
-    if (pt_ptr->x < 0)
-      continue;
     circle_params->center_pt.x = pt_ptr->x;
     circle_params->center_pt.y = pt_ptr->y;
     circle_params->radius = priv->radius;
@@ -691,7 +700,7 @@ vvas_metaconvert_create (VvasContext * vvas_ctx, VvasMetaConvertConfig * cfg,
 
       memcpy (&priv->allowed_classes[i]->name,
           &cfg->allowed_classes[i]->name, META_CONVERT_MAX_STR_LENGTH - 1);
-      priv->allowed_classes[i]->name[META_CONVERT_MAX_STR_LENGTH - 1] = '\0' ;
+      priv->allowed_classes[i]->name[META_CONVERT_MAX_STR_LENGTH - 1] = '\0';
       memcpy (&priv->allowed_classes[i]->color,
           &cfg->allowed_classes[i]->color, sizeof (VvasRGBColor));
       priv->allowed_classes[i]->do_mask = cfg->allowed_classes[i]->do_mask;
@@ -706,6 +715,45 @@ error:
   if (priv)
     free (priv);
   return NULL;
+}
+
+/**
+ *  @fn vvas_metaconvert_set_color_for_allowed_classes (VvasMetaConvertPriv * priv,
+ *                               VvasInferClassification * classification, uint8_t * do_mask,
+ *                               VvasRGBColor * clr)
+ *  @param [in] priv - Meta convert private handler
+ *  @param [in] classification - classification information of a node
+ *  @param [out] do_mask - Returns whether to mask the object of the given node or not
+ *  @param [out] clr - Returns the label color information of the given node
+ *  @return int
+ *  @brief Returns the label color information of the given node if the node class is part of allowed classes
+ */
+int
+vvas_metaconvert_set_color_for_allowed_classes (VvasMetaConvertPriv * priv,
+    VvasInferClassification * classification, uint8_t * do_mask,
+    VvasRGBColor * clr)
+{
+  int allowed_class_idx = -1;
+  int i;
+
+  for (i = 0; i < priv->allowed_classes_count; i++) {
+    if (!strncmp (classification->class_label, priv->allowed_classes[i]->name,
+            META_CONVERT_MAX_STR_LENGTH)) {
+      LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level, "class %s in allowed list",
+          classification->class_label);
+      allowed_class_idx = i;
+      break;
+    }
+  }
+
+  if (priv->allowed_classes && allowed_class_idx >= 0) {
+    clr->blue = priv->allowed_classes[allowed_class_idx]->color.blue;
+    clr->red = priv->allowed_classes[allowed_class_idx]->color.red;
+    clr->green = priv->allowed_classes[allowed_class_idx]->color.green;
+    *do_mask = priv->allowed_classes[allowed_class_idx]->do_mask;
+  }
+
+  return allowed_class_idx;
 }
 
 /**
@@ -731,6 +779,7 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
   int level = vvas_treenode_get_depth (parent);
   VvasTreeNode *child = parent->children;
   uint8_t do_mask = 0;
+  uint8_t rectangle_attached = 0;
   VvasReturnType vret = VVAS_RET_SUCCESS;
 
   LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level, "node %p at depth %d",
@@ -756,95 +805,44 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
 
   if (!parent_pred->enabled) {
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
-        "Oject is inactive. Not displaying");
+        "Object is inactive. Not displaying");
     return VVAS_RET_SUCCESS;
   }
 
-  for (parent_classes = parent_pred->classifications;
-      parent_classes; parent_classes = parent_classes->next) {
+  for (parent_classes = parent_pred->classifications; parent_classes;
+      parent_classes = parent_classes->next) {
     int allowed_class_idx = -1;
 
     classification = (VvasInferClassification *) parent_classes->data;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
         "class label to bbox node : %s", classification->class_label);
-
     if (priv->allowed_classes && classification->class_label) {
-      int i;
+      allowed_class_idx =
+          vvas_metaconvert_set_color_for_allowed_classes (priv, classification,
+          &do_mask, &clr);
+    }
 
-      for (i = 0; i < priv->allowed_classes_count; i++) {
-        if (!strncmp (classification->class_label,
-                priv->allowed_classes[i]->name, META_CONVERT_MAX_STR_LENGTH)) {
-          LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
-              "class %s in allowed list", classification->class_label);
-          allowed_class_idx = i;
-          break;
+    if (!priv->allowed_classes || (priv->allowed_classes
+            && allowed_class_idx >= 0)) {
+      /* Prepare label_string only for infer level which is same as display_level */
+      if (priv->level == 0 || (level - 1) == priv->level) {
+        if (!label_string) {
+          label_string =
+              prepare_label_string (priv, parent_pred, classification);
+        } else {
+          char *cur_label_string =
+              prepare_label_string (priv, parent_pred, classification);
+          char *tmp_str;
+
+          tmp_str = append_string (label_string, ", ");
+          free (label_string);
+
+          label_string = append_string (tmp_str, cur_label_string);
+          free (tmp_str);
+          free (cur_label_string);
         }
       }
-
-      if (allowed_class_idx < 0)
-        continue;
-    }
-
-    if (priv->allowed_classes && allowed_class_idx >= 0) {
-      clr.blue = priv->allowed_classes[allowed_class_idx]->color.blue;
-      clr.red = priv->allowed_classes[allowed_class_idx]->color.red;
-      clr.green = priv->allowed_classes[allowed_class_idx]->color.green;
-      do_mask = priv->allowed_classes[allowed_class_idx]->do_mask;
-    }
-
-    if (!label_string) {
-      label_string = prepare_label_string (priv, parent_pred, classification);
-    } else {
-      char *cur_label_string =
-          prepare_label_string (priv, parent_pred, classification);
-      char *tmp_str;
-
-      tmp_str = append_string (label_string, ", ");
-      free (label_string);
-
-      label_string = append_string (tmp_str, cur_label_string);
-      free (tmp_str);
-    }
-  }
-
-  if (level != 1) {             /* if not root node, we draw rectangle */
-    if (parent_pred->bbox.width && parent_pred->bbox.height) {
-      VvasOverlayRectParams *rect_params =
-          (VvasOverlayRectParams *) calloc (1, sizeof (VvasOverlayRectParams));
-      if (!rect_params) {
-        LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
-            "failed to allocate memory...");
-        return VVAS_RET_ALLOC_ERROR;
-      }
-      rect_params->points.x = parent_pred->bbox.x;
-      rect_params->points.y = parent_pred->bbox.y;
-      rect_params->width = parent_pred->bbox.width;
-      rect_params->height = parent_pred->bbox.height;
-      rect_params->thickness = priv->line_thickness;
-      rect_params->rect_color.red = clr.red;
-      rect_params->rect_color.green = clr.green;
-      rect_params->rect_color.blue = clr.blue;
-      rect_params->apply_bg_color = 0;
-
-      if (do_mask || ((priv->mask_tree_level)
-              && (level == priv->mask_tree_level))) {
-        /* Apply masking when class string matches or level matches */
-        rect_params->apply_bg_color = 1;
-        rect_params->bg_color.red = 0;
-        rect_params->bg_color.green = 0;
-        rect_params->bg_color.blue = 0;
-      }
-
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
-          "appending rectangle [%u] : x = %u, y = %u, width = %u, height = %u"
-          "Color : B = %u, G = %u, R = %u", shape_info->num_rects,
-          parent_pred->bbox.x, parent_pred->bbox.y, parent_pred->bbox.width,
-          parent_pred->bbox.height, rect_params->rect_color.blue,
-          rect_params->rect_color.green, rect_params->rect_color.red);
-      shape_info->rect_params =
-          vvas_list_append (shape_info->rect_params, rect_params);
-      shape_info->num_rects++;
     }
   }
 
@@ -865,6 +863,9 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
     if (!text_params) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
           "failed to allocate memory");
+      if (label_string)
+        free (label_string);
+
       return VVAS_RET_ALLOC_ERROR;
     }
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level, "parsing BCC meta");
@@ -906,6 +907,8 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
   if (VVAS_IS_ERROR (vret)) {
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
         "failed to create overlay meta");
+    if (label_string)
+      free (label_string);
     return vret;
   }
 
@@ -919,9 +922,9 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
     uint8_t child_level = level + 1;
 
     LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
-        "child node %p at level %d, width = %d and height = %d",
-        child, child_level, child_pred->bbox.width, child_pred->bbox.height);
-
+        "child node %p at level %d, display_level %d, width = %d and height = %d",
+        child, child_level, priv->level, child_pred->bbox.width,
+        child_pred->bbox.height);
 
     if (vvas_metaconvert_consider_child (meta_convert, child) == TRUE) {
       /* ignore detection child node as it will be parsed as parent node */
@@ -931,16 +934,25 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
       continue;
     }
 
-
     for (classes = child_pred->classifications; classes;
         classes = classes->next) {
       char *class_label_str = NULL;
 
       classification = (VvasInferClassification *) classes->data;
 
+      /* Prepare label_string only for child_level which is same as display_level
+         and exclude all other child_level label_string */
+      if (priv->level != 0 && (child_level - 1) != priv->level)
+        continue;
+
       class_label_str = prepare_label_string (priv, NULL, classification);
       if (!class_label_str)
         continue;
+
+      if (priv->allowed_classes && classification->class_label) {
+        vvas_metaconvert_set_color_for_allowed_classes (priv, classification,
+            &do_mask, &clr);
+      }
 
       if (append_slash) {
         if (label_string) {
@@ -982,21 +994,109 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
     child = child->next;
   }
 
+  if (level != 1 && (priv->level == 0 || (level - 1) == priv->level)) {
+    if (parent_pred->bbox.width && parent_pred->bbox.height) {
+      VvasOverlayRectParams *rect_params =
+          (VvasOverlayRectParams *) calloc (1, sizeof (VvasOverlayRectParams));
+      if (!rect_params) {
+        LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
+            "failed to allocate memory...");
+        
+        if (label_string)
+          free (label_string);
+
+        return VVAS_RET_ALLOC_ERROR;
+      }
+      rect_params->points.x = parent_pred->bbox.x;
+      rect_params->points.y = parent_pred->bbox.y;
+      rect_params->width = parent_pred->bbox.width;
+      rect_params->height = parent_pred->bbox.height;
+      rect_params->thickness = priv->line_thickness;
+      rect_params->rect_color.red = clr.red;
+      rect_params->rect_color.green = clr.green;
+      rect_params->rect_color.blue = clr.blue;
+      rect_params->apply_bg_color = 0;
+
+      if (do_mask || ((priv->mask_tree_level)
+              && (level == priv->mask_tree_level))) {
+        /* Apply masking when class string matches or level matches */
+        rect_params->apply_bg_color = 1;
+        rect_params->bg_color.red = 0;
+        rect_params->bg_color.green = 0;
+        rect_params->bg_color.blue = 0;
+      }
+
+      LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
+          "appending rectangle [%u] : x = %u, y = %u, width = %u, height = %u"
+          "Color : B = %u, G = %u, R = %u", shape_info->num_rects,
+          parent_pred->bbox.x, parent_pred->bbox.y, parent_pred->bbox.width,
+          parent_pred->bbox.height, rect_params->rect_color.blue,
+          rect_params->rect_color.green, rect_params->rect_color.red);
+      shape_info->rect_params =
+          vvas_list_append (shape_info->rect_params, rect_params);
+      shape_info->num_rects++;
+      rectangle_attached = 1;
+    }
+  }
+
   if (label_string) {
+    /* Add bounding box if label_string exists, with this approach we always have label with
+       bounding box. Here 3 possible cases cover as per display_level
+       case 1 - display only parent label, always have bounding box so add from same node
+       case 2 - display only child label, do not have bounding box so consider parent bounding box
+       case 3 - display child and parent label, have parent bounding box so add parent bounding box
+       case 4 - display only labels, do not have bounding box so do not add bounding box */
+    if ((level != 1) && (rectangle_attached == 0) &&
+        parent_pred->bbox.width && parent_pred->bbox.height) {
+      VvasOverlayRectParams *rect_params = (VvasOverlayRectParams *) calloc (1,
+          sizeof (VvasOverlayRectParams));
+      if (!rect_params) {
+        free (label_string);
+        LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
+            "failed to allocate memory...");
+        return VVAS_RET_ALLOC_ERROR;
+      }
+      rect_params->points.x = parent_pred->bbox.x;
+      rect_params->points.y = parent_pred->bbox.y;
+      rect_params->width = parent_pred->bbox.width;
+      rect_params->height = parent_pred->bbox.height;
+      rect_params->thickness = priv->line_thickness;
+      rect_params->rect_color.red = clr.red;
+      rect_params->rect_color.green = clr.green;
+      rect_params->rect_color.blue = clr.blue;
+      rect_params->apply_bg_color = 0;
+
+      if (do_mask || ((priv->mask_tree_level)
+              && (level == priv->mask_tree_level))) {
+        /* Apply masking when class string matches or level matches */
+        rect_params->apply_bg_color = 1;
+        rect_params->bg_color.red = 0;
+        rect_params->bg_color.green = 0;
+        rect_params->bg_color.blue = 0;
+      }
+
+      LOG_MESSAGE (LOG_LEVEL_DEBUG, priv->log_level,
+          "appending rectangle [%u] : x = %u, y = %u, width = %u, height = %u"
+          "Color : B = %u, G = %u, R = %u", shape_info->num_rects,
+          parent_pred->bbox.x, parent_pred->bbox.y, parent_pred->bbox.width,
+          parent_pred->bbox.height, rect_params->rect_color.blue,
+          rect_params->rect_color.green, rect_params->rect_color.red);
+      shape_info->rect_params =
+          vvas_list_append (shape_info->rect_params, rect_params);
+      shape_info->num_rects++;
+    }
+
     uint32_t y_offset;
     VvasOverlayTextParams *text_params =
         (VvasOverlayTextParams *) calloc (1, sizeof (VvasOverlayTextParams));
     if (!text_params) {
+      free (label_string);
       LOG_MESSAGE (LOG_LEVEL_ERROR, priv->log_level,
           "failed to allocate memory...");
       return VVAS_RET_ALLOC_ERROR;
     }
 
-    if (priv->y_offset >= 0) {
-      y_offset = priv->y_offset;
-    } else {
-      y_offset = parent_pred->bbox.height;
-    }
+    y_offset = priv->y_offset;
 
     text_params->bottom_left_origin = 1;
     if (!priv->draw_above_bbox_flag)
@@ -1006,8 +1106,8 @@ vvas_metaconvert_prepare_overlay_metadata (VvasMetaConvert * meta_convert,
     text_params->points.y = parent_pred->bbox.y + y_offset;
     /* If y is zero bottom_left_origin will be set zero for drawing
        text inside image */
-   if (!text_params->points.y)
-     text_params->bottom_left_origin = 0;
+    if (!text_params->points.y)
+      text_params->bottom_left_origin = 0;
 
     text_params->text_font.font_size = priv->font_size;
     text_params->text_font.font_num = priv->font_type;

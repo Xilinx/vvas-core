@@ -139,14 +139,15 @@ get_scales (const vitis::ai::proto::DpuKernelParam & c)
   return std::vector < float >(c.scale ().begin (), c.scale ().end ());
 }
 
-static std::vector < const
+static
+    std::vector < const
 xir::Subgraph * >
 get_dpu_subgraph (const xir::Graph * graph)
 {
   auto root = graph->get_root_subgraph ();
   auto children = root->children_topological_sort ();
   auto ret = std::vector < const xir::Subgraph * >();
-  for (auto c:children) {
+for (auto c:children) {
     auto device = c->get_attr < std::string > ("device");
     if (device == "DPU") {
       ret.emplace_back (c);
@@ -166,7 +167,8 @@ get_innerscale_value (const std::string & model_name)
   return inner_scale;
 }
 
-static std::string
+static
+    std::string
 slurp (const char *filename)
 {
   std::ifstream in;
@@ -179,7 +181,8 @@ slurp (const char *filename)
 }
 
 static bool
-parse_prototxt_file (VvasDpuInferPrivate * kpriv, const std::string & prototxt_file)
+parse_prototxt_file (VvasDpuInferPrivate * kpriv,
+    const std::string & prototxt_file)
 {
   vitis::ai::proto::DpuModelParamList mlist;
   bool ret = true;
@@ -221,7 +224,8 @@ parse_prototxt_file (VvasDpuInferPrivate * kpriv, const std::string & prototxt_f
   return ret;
 }
 
-static std::string
+static
+    std::string
 modelexists (VvasDpuInferPrivate * kpriv)
 {
   auto elf_name =
@@ -385,7 +389,8 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "Creating model %s",
       kpriv->modelname.c_str ());
 
-  const auto labelfile = kpriv->modelpath + "/" + kpriv->modelname + "/" + "label.json";
+  const auto labelfile =
+      kpriv->modelpath + "/" + kpriv->modelname + "/" + "label.json";
   if (fileexists (labelfile)) {
     LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
         "Label file %s found\n", labelfile.c_str ());
@@ -474,8 +479,7 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
     case VVAS_XCLASS_SEGMENTATION:
     {
       model =
-          new vvas_segmentation (kpriv, kpriv->elfname,
-          kpriv->need_preprocess);
+          new vvas_segmentation (kpriv, kpriv->elfname, kpriv->need_preprocess);
       break;
     }
 #endif
@@ -490,8 +494,7 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
 #ifdef ENABLE_PLATENUM
     case VVAS_XCLASS_PLATENUM:
     {
-      model =
-          new vvas_platenum (kpriv, kpriv->elfname, kpriv->need_preprocess);
+      model = new vvas_platenum (kpriv, kpriv->elfname, kpriv->need_preprocess);
       break;
     }
 #endif
@@ -531,16 +534,14 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
     case VVAS_XCLASS_FACELANDMARK:
     {
       model =
-          new vvas_facelandmark (kpriv, kpriv->elfname,
-          kpriv->need_preprocess);
+          new vvas_facelandmark (kpriv, kpriv->elfname, kpriv->need_preprocess);
       break;
     }
 #endif
 #ifdef ENABLE_ROADLINE
     case VVAS_XCLASS_ROADLINE:
     {
-      model =
-          new vvas_roadline (kpriv, kpriv->elfname, kpriv->need_preprocess);
+      model = new vvas_roadline (kpriv, kpriv->elfname, kpriv->need_preprocess);
       break;
     }
 #endif
@@ -570,7 +571,7 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
   vvas_mutex_unlock (&model_create_lock);
 
   if ((kpriv->labelflags & VVAS_XLABEL_REQUIRED)
-        && (kpriv->labelflags & VVAS_XLABEL_NOT_FOUND)) {
+      && (kpriv->labelflags & VVAS_XLABEL_NOT_FOUND)) {
     model->close ();
     delete model;
     kpriv->modelclass = VVAS_XCLASS_NOTFOUND;
@@ -581,9 +582,8 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
 
   long int model_batch_size = model->supportedbatchsz ();
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
-        "model supported batch size (%ld)"
-        "batch size set by user (%d)",
-        model_batch_size, kpriv->batch_size);
+      "model supported batch size (%ld)"
+      "batch size set by user (%d)", model_batch_size, kpriv->batch_size);
 
   kpriv->batch_size = model_batch_size;
 
@@ -591,14 +591,14 @@ vvas_xinitmodel (VvasDpuInferPrivate * kpriv, int modelclass)
 }
 
 int
-prepare_filter_labels (VvasDpuInferPrivate * kpriv, char **filter_labels, int num)
+prepare_filter_labels (VvasDpuInferPrivate * kpriv, char **filter_labels,
+    int num)
 {
-  for (int i = 0; i < num; i++)
-  {
-    if (!filter_labels [i]) {
+  for (int i = 0; i < num; i++) {
+    if (!filter_labels[i]) {
       return -1;
     }
-    kpriv->filter_labels.push_back(std::string(filter_labels[i]));
+    kpriv->filter_labels.push_back (std::string (filter_labels[i]));
   }
   return 0;
 }
@@ -620,8 +620,7 @@ vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel log_level)
 
   kpriv = new VvasDpuInferPrivate;
   if (!kpriv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, log_level,
-        "Failed to allocate memory");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, log_level, "Failed to allocate memory");
     return NULL;
   }
 
@@ -633,8 +632,7 @@ vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel log_level)
   kpriv->modelfmt = dpu_conf->model_format;
   if (kpriv->modelfmt == VVAS_VIDEO_FORMAT_UNKNOWN) {
     LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
-        "SORRY NOT SUPPORTED MODEL FORMAT %d",
-        dpu_conf->model_format);
+        "SORRY NOT SUPPORTED MODEL FORMAT %d", dpu_conf->model_format);
     goto error;
   }
   kpriv->modelpath = dpu_conf->model_path;
@@ -648,18 +646,24 @@ vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel log_level)
     kpriv->segoutfactor = dpu_conf->segoutfactor;
     kpriv->segoutfmt = dpu_conf->segoutfmt;
     if (kpriv->segoutfmt == VVAS_VIDEO_FORMAT_UNKNOWN ||
-          !(kpriv->segoutfmt == VVAS_VIDEO_FORMAT_BGR ||
-              kpriv->segoutfmt == VVAS_VIDEO_FORMAT_GRAY8)) {
+        !(kpriv->segoutfmt == VVAS_VIDEO_FORMAT_BGR ||
+            kpriv->segoutfmt == VVAS_VIDEO_FORMAT_GRAY8)) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
           "SORRY NOT SUPPORTED SEGMENTATION OUTPUT FORMAT %d",
           dpu_conf->segoutfmt);
       goto error;
     }
-  } else if (kpriv->modelclass == VVAS_XCLASS_RAWTENSOR && kpriv->need_preprocess) {
+  } else if (kpriv->modelclass == VVAS_XCLASS_RAWTENSOR
+      && kpriv->need_preprocess) {
     LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
         "Please provide preprocessed data for rawtensor output");
     goto error;
+  } else if (kpriv->modelclass == VVAS_XCLASS_NOTFOUND) {
+    LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
+        "Model Class %s not found", dpu_conf->modelclass);
+    goto error;
   }
+
   kpriv->modelname = dpu_conf->model_name;
   kpriv->elfname = modelexists (kpriv);
   if (kpriv->elfname.empty ()) {
@@ -680,8 +684,7 @@ vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel log_level)
   kpriv->model_width = kpriv->model->requiredwidth ();
   kpriv->model_height = kpriv->model->requiredheight ();
 
-  if (kpriv->need_preprocess)
-  {
+  if (kpriv->need_preprocess) {
     /** No need of PP from VVAS */
     kpriv->pp_config.mean_r = 0;
     kpriv->pp_config.mean_g = 0;
@@ -692,12 +695,13 @@ vvas_dpuinfer_create (VvasDpuInferConf * dpu_conf, VvasLogLevel log_level)
   }
 
   if (dpu_conf->num_filter_labels) {
-    if (prepare_filter_labels (kpriv, dpu_conf->filter_labels, dpu_conf->num_filter_labels) < 0) {
+    if (prepare_filter_labels (kpriv, dpu_conf->filter_labels,
+            dpu_conf->num_filter_labels) < 0) {
       goto error;
     }
   }
 
-  return (VvasDpuInfer *)kpriv;
+  return (VvasDpuInfer *) kpriv;
 
 error:
   if (kpriv->model)
@@ -720,9 +724,12 @@ error:
  *  @brief   This API returns VvasInferPrediction to each frame.
  *  @note    It is user's responsibility to free the VvasInferPrediction of each frame.
  */
-VvasReturnType vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle, VvasVideoFrame *inputs[MAX_NUM_OBJECT], VvasInferPrediction *predictions[MAX_NUM_OBJECT], int batch_size)
+VvasReturnType
+vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle,
+    VvasVideoFrame * inputs[MAX_NUM_OBJECT],
+    VvasInferPrediction * predictions[MAX_NUM_OBJECT], int batch_size)
 {
-  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *)dpu_handle;
+  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *) dpu_handle;
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "enter");
   std::vector < cv::Mat > images;
   vvas_perf *pf = &kpriv->pf;
@@ -734,8 +741,8 @@ VvasReturnType vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle, VvasVide
 
   if (batch_size > kpriv->batch_size) {
     LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
-       "received more frames than batch size (%d) of the DPU",
-       kpriv->batch_size);
+        "received more frames than batch size (%d) of the DPU",
+        kpriv->batch_size);
     return VVAS_RET_ERROR;
   }
 
@@ -743,41 +750,43 @@ VvasReturnType vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle, VvasVide
     cur_frame = inputs[i];
     if (!cur_frame) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
-    	  "Input Frame %d is NULL", i + 1);
+          "Input Frame %d is NULL", i + 1);
       return VVAS_RET_ERROR;
     }
 
-    vret = vvas_video_frame_map(cur_frame, VVAS_DATA_MAP_READ, &vframe_info);
+    vret = vvas_video_frame_map (cur_frame, VVAS_DATA_MAP_READ, &vframe_info);
     if (vret != VVAS_RET_SUCCESS) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
-         "Failed to map video frame");
+          "Failed to map video frame");
       return vret;
     }
 
     if (vframe_info.fmt != kpriv->modelfmt) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, kpriv->log_level,
-         "Video frame format %d not supported", vframe_info.fmt);
+          "Video frame format %d not supported", vframe_info.fmt);
       return VVAS_RET_ERROR;
     }
 
-    if (kpriv->model_width != vframe_info.width || kpriv->model_height != vframe_info.height) {
+    if (kpriv->model_width != vframe_info.width
+        || kpriv->model_height != vframe_info.height) {
       LOG_MESSAGE (LOG_LEVEL_WARNING, kpriv->log_level,
           "Input height/width not match with model" "requirement");
       LOG_MESSAGE (LOG_LEVEL_WARNING, kpriv->log_level,
-          "model required wxh is %dx%d", kpriv->model_width, kpriv->model_height);
+          "model required wxh is %dx%d", kpriv->model_width,
+          kpriv->model_height);
       LOG_MESSAGE (LOG_LEVEL_WARNING, kpriv->log_level,
-          "input image wxh is %dx%d", vframe_info.width,
-          vframe_info.height);
+          "input image wxh is %dx%d", vframe_info.width, vframe_info.height);
     }
 
 
     uchar *data_ptr = (uchar *) vframe_info.planes[0].data;
-      cv::Mat image (vframe_info.height, vframe_info.width, CV_8UC3,
-          (void *) (data_ptr), vframe_info.planes[0].stride);
+    cv::Mat image (vframe_info.height, vframe_info.width, CV_8UC3,
+        (void *) (data_ptr), vframe_info.planes[0].stride);
 
-    vvas_video_frame_unmap(cur_frame, &vframe_info);
+    vvas_video_frame_unmap (cur_frame, &vframe_info);
     images.push_back (image);
-    LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "pushed Mat image %d", i + 1);
+    LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "pushed Mat image %d",
+        i + 1);
   }
 
   if (kpriv->performance_test && !kpriv->pf.test_started) {
@@ -799,9 +808,12 @@ VvasReturnType vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle, VvasVide
       long long current_time = get_time ();
       double time = (current_time - pf->last_displayed_time) / 1000000.0;
       pf->last_displayed_time = current_time;
-      double fps = (time > 0.0) ? ((pf->frames - pf->last_displayed_frame) / time) : 999.99;
+      double fps =
+          (time >
+          0.0) ? ((pf->frames - pf->last_displayed_frame) / time) : 999.99;
       pf->last_displayed_frame = pf->frames;
-      printf ("\rframe=%5lu fps=%6.*f        \r", pf->frames, (fps < 9.995) ? 3 : 2, fps);
+      printf ("\rframe=%5lu fps=%6.*f        \r", pf->frames,
+          (fps < 9.995) ? 3 : 2, fps);
       fflush (stdout);
     }
   }
@@ -819,15 +831,17 @@ VvasReturnType vvas_dpuinfer_process_frames (VvasDpuInfer * dpu_handle, VvasVide
  *  @brief  Returns the VvasModelConf structure with all fields populated.
  *  @note It is user's responsibility to allocate memory to this structure
  */
-VvasReturnType vvas_dpuinfer_get_config (VvasDpuInfer * dpu_handle, VvasModelConf *model_conf)
+VvasReturnType
+vvas_dpuinfer_get_config (VvasDpuInfer * dpu_handle, VvasModelConf * model_conf)
 {
 
-  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *)dpu_handle;
+  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *) dpu_handle;
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "enter");
   if (model_conf) {
     if (!kpriv->need_preprocess) {
       float inner_scale_factor = get_innerscale_value (kpriv->elfname);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "inner scale %f", inner_scale_factor);
+      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "inner scale %f",
+          inner_scale_factor);
       kpriv->pp_config.scale_r *= inner_scale_factor;
       kpriv->pp_config.scale_g *= inner_scale_factor;
       kpriv->pp_config.scale_b *= inner_scale_factor;
@@ -856,16 +870,18 @@ VvasReturnType vvas_dpuinfer_get_config (VvasDpuInfer * dpu_handle, VvasModelCon
  *  @return VvasReturnType
  *  @brief  De-initialises the model and free all other resources allocated
  */
-VvasReturnType vvas_dpuinfer_destroy (VvasDpuInfer * dpu_handle)
+VvasReturnType
+vvas_dpuinfer_destroy (VvasDpuInfer * dpu_handle)
 {
-  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *)dpu_handle;
+  VvasDpuInferPrivate *kpriv = (VvasDpuInferPrivate *) dpu_handle;
   LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "enter");
   vvas_perf *pf = &kpriv->pf;
 
   if (kpriv->performance_test && kpriv->pf.test_started) {
     double time = (get_time () - pf->timer_start) / 1000000.0;
     double fps = (time > 0.0) ? (pf->frames / time) : 999.99;
-    printf ("\rframe=%5lu fps=%6.*f        \n", pf->frames, (fps < 9.995) ? 3 : 2, fps);
+    printf ("\rframe=%5lu fps=%6.*f        \n", pf->frames,
+        (fps < 9.995) ? 3 : 2, fps);
   }
   pf->test_started = 0;
   pf->frames = 0;

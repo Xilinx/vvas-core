@@ -17,9 +17,9 @@
  */
 
 /**
- * DOC: Contains VVAS Context specific to an FPGA device
+ * DOC: VVAS Context APIs
  *
- * This file contains context related structures and method declarations for VVAS core libraries
+ * This file contains context related structures and method declarations for VVAS core libraries.
  */
 
 #ifndef __VVAS_CONTEXT_H__
@@ -33,7 +33,7 @@
  * struct VvasContext - Holds a context related to a device
  * @dev_idx: Device index to which current context belongs
  * @xclbin_loc: xclbin location which is used to configure a device
- * @dev_handle: Handle to a device with &VvasContext->dev_idx
+ * @dev_handle: Device Handle to which current context belongs to and having device index &VvasContext->dev_idx
  * @uuid: UUID of xclbin
  * @log_level: Loging level to be used by context
  */
@@ -50,27 +50,29 @@ extern "C" {
 #endif
 
 /**
- * vvas_context_create() - Creates device handle by opening specified device index and download xclbin image on the same
+ * vvas_context_create() - Opens device specified by dev_idx and download xclbin image on the same
  * @dev_idx: Index of the FPGA device. This can be -1 if no FPGA is present
  * @xclbin_loc: Location of xclbin to be downloaded on device index @dev_idx. This can be NULL as well in case user does not want to access FPGA device
  * @log_level: Logging level
  * @vret: Address to store return value. In case of error, @vret is useful in understanding the root cause
  *
- * User can create multiple contexts to a device with same xclbin. If user wish creates
- * a context with different xclbin than the xclbin configured on a FPGA device,
+ * User can create multiple contexts to a device with same xclbin. If user wish to create
+ * a context with different xclbin than the xclbin already configured on a FPGA device,
  * he/she need to first destroy the old context with vvas_context_destroy()
- * before creating new context. User shall provide @dev_idx and @xclbin_loc if
- * there is a need to access FPGA device while calling this API.
+ * before creating new context. User shall provide valid @dev_idx and @xclbin_loc if
+ * there is a need to access FPGA device while calling this API. In case a vvas-core API doesn't need to access any FPGA
+ * device, then device id must be -1 and xclbin_loc can be NULL
  *
  * Return:
- * Address of VvasContext on success
- * NULL on failure
+ * * Address of VvasContext on success
+ * * NULL on failure
  */
 VvasContext* vvas_context_create (int32_t dev_idx, char * xclbin_loc, VvasLogLevel log_level, VvasReturnType *vret);
 
 /**
  * vvas_context_destroy() - Destroys device context
  * @vvas_ctx: Context to device
+ *
  * Before destroying the context, application should destroy modules which are using current context.
  * Return: &enum VvasReturnType
  */

@@ -536,11 +536,11 @@ vvas_scaler_generate_cardinal_cubic_spline (int src, int dst,
   int xx, j, p, t;
   int64_t d = 0, coeff = 0, dd = 0, ddd = 0;
   int phase_cnt = 0;
-  int64_t error = 0, sum = 0, v = 0;
+  int64_t error = 0, sum = 0, v = 0, ReadLoc = 0;
   int intV = 0;
   int fstart_Idx = 0, fend_Idx = 0, half_Idx = 0, middleIdx = 0;
-  unsigned int PhaseH = 0, offset = 0, WriteLoc = 0, WriteLocNext = 0, ReadLoc =
-      0, OutputWrite_En = 0;
+  unsigned int PhaseH = 0, offset = 0, WriteLoc = 0, WriteLocNext = 0,
+      OutputWrite_En = 0;
   int OutPixels = dst;
   int PixelRate = (int) ((float) ((src * STEP_PRECISION) + (dst / 2))
       / (float) dst);
@@ -959,6 +959,7 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
   uint32_t input_stride, output_stride;
   bool ret = false;
   VvasVideoFrameMapInfo map_info;
+  VvasReturnType vret;
 
 #ifdef ENABLE_PPE_SUPPORT
   uint32_t val;
@@ -1092,7 +1093,11 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
   }
 
   /* Get virtual address of input buffer's planes */
-  vvas_video_frame_map (src_rect->frame, VVAS_DATA_MAP_READ, &map_info);
+  vret = vvas_video_frame_map (src_rect->frame, VVAS_DATA_MAP_READ, &map_info);
+  if (vret != VVAS_RET_SUCCESS) {
+    LOG_ERROR (self->log_level, "failed to map source VvasVideoFrame");
+    goto error;
+  }
   switch (in_vinfo.n_planes) {
     case 3:
       in_vaddr[2] = map_info.planes[2].data;
@@ -1114,7 +1119,11 @@ vvas_scaler_prepare_processing_descriptor (VvasScalerImpl * self,
   }
 
   /* Get virtual address of output buffer's planes */
-  vvas_video_frame_map (dst_rect->frame, VVAS_DATA_MAP_WRITE, &map_info);
+  vret = vvas_video_frame_map (dst_rect->frame, VVAS_DATA_MAP_WRITE, &map_info);
+  if (vret != VVAS_RET_SUCCESS) {
+    LOG_ERROR (self->log_level, "failed to map destination VvasVideoFrame");
+    goto error;
+  }
   switch (out_vinfo.n_planes) {
     case 3:
       out_vaddr[2] = map_info.planes[2].data;
@@ -1290,6 +1299,62 @@ vvas_scaler_create_impl (VvasContext * ctx, const char *kernel_name,
 }
 
 /**
+ *  @fn static bool vvas_scaler_validate_rect_params (VvasScalerImpl *self, VvasScalerRect *rect)
+ *  @param [in] self        - VvasScalerImpl instance pointer
+ *  @param [in, out] rect   - VvasScalerRect to be validated and aligned
+ *  @return true on success\n false on failure
+ *  @brief  This function validates and aligns the given VvasScalerRect
+ */
+static bool
+vvas_scaler_validate_rect_params (VvasScalerImpl * self, VvasScalerRect * rect)
+{
+  uint32_t y_aligned, height_aligned;
+  VvasVideoInfo info = { 0 };
+
+  LOG_DEBUG (self->log_level, "Crop params x: %u, y: %u, width: %u, height: %u",
+      rect->x, rect->y, rect->width, rect->height);
+
+  vvas_video_frame_get_videoinfo (rect->frame, &info);
+
+  if (VVAS_VIDEO_FORMAT_UNKNOWN == info.fmt) {
+    LOG_ERROR (self->log_level, "video format unknown");
+    return false;
+  }
+
+  /* For below formats height of UV plane is height of Y plane / 2,
+   * hence align height and y coordinate by 2
+   *---------------------------------------
+   * Format                        Scaling
+   *---------------------------------------
+   * 1.VVAS_VIDEO_FORMAT_Y_UV8_420   4:2:0
+   * 2.VVAS_VIDEO_FORMAT_I420        4:2:0
+   * 3.VVAS_VIDEO_FORMAT_NV16        4:2:2
+   * 4.VVAS_VIDEO_FORMAT_I422_10LE   4:2:2
+   * 5.VVAS_VIDEO_FORMAT_NV12_10LE32 4:2:0
+   */
+  if ((info.fmt == VVAS_VIDEO_FORMAT_Y_UV8_420) ||
+      (info.fmt == VVAS_VIDEO_FORMAT_I420) ||
+      (info.fmt == VVAS_VIDEO_FORMAT_NV16) ||
+      (info.fmt == VVAS_VIDEO_FORMAT_I422_10LE) ||
+      (info.fmt == VVAS_VIDEO_FORMAT_NV12_10LE32)) {
+    y_aligned = (rect->y / 2) * 2;
+    height_aligned = rect->y + rect->height - y_aligned;
+    height_aligned = ((height_aligned + 1) / 2) * 2;
+  } else {
+    y_aligned = rect->y;
+    height_aligned = rect->height;
+  }
+
+  rect->y = y_aligned;
+  rect->height = height_aligned;
+
+  LOG_DEBUG (self->log_level, "Aligned x: %u, y: %u, width: %u, height: %u",
+      rect->x, rect->y, rect->width, rect->height);
+
+  return true;
+}
+
+/**
  *  @fn VvasReturnType vvas_scaler_channel_add_impl (VvasScalerInstace * hndl,
  *                                              VvasScalerRect * src_rect,
  *                                              VvasScalerRect * dst_rect,
@@ -1303,10 +1368,13 @@ vvas_scaler_create_impl (VvasContext * ctx, const char *kernel_name,
  */
 static VvasReturnType
 vvas_scaler_channel_add_impl (VvasScalerInstace * hndl,
-    VvasScalerRect * src_rect, VvasScalerRect * dst_rect, VvasScalerPpe * ppe)
+    VvasScalerRect * src_rect, VvasScalerRect * dst_rect,
+    VvasScalerPpe * ppe, VvasScalerParam * param)
 {
+  (void)param;
   VvasScalerImpl *self;
   VvasReturnType ret = VVAS_RET_ERROR;
+  bool bret;
 
   if (!hndl || !src_rect || !dst_rect) {
     return VVAS_RET_INVALID_ARGS;
@@ -1322,6 +1390,14 @@ vvas_scaler_channel_add_impl (VvasScalerInstace * hndl,
       ret = VVAS_RET_ALLOC_ERROR;
       goto error_;
     }
+  }
+
+  /* Let's validate and align src and dst bbox rectangles */
+  bret = vvas_scaler_validate_rect_params (self, src_rect);
+  bret &= vvas_scaler_validate_rect_params (self, dst_rect);
+  if (!bret) {
+    LOG_ERROR (self->log_level, "Failed to validate rect params");
+    goto error_;
   }
 
   if (!vvas_scaler_prepare_processing_descriptor (self, src_rect, dst_rect, ppe,

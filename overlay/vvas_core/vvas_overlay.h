@@ -96,7 +96,9 @@ extern "C" {
  *
  * Context: Drawing is performed on the given frame.
  *
- * @return  On Success returns VVAS_SUCCESS. On Failure returns VVAS_ERROR_*
+ * Return:
+ * * On Success, returns VVAS_SUCCESS.
+ * * On Failure, returns VVAS_ERROR_*
  */
 VvasReturnType vvas_overlay_process_frame (VvasOverlayFrameInfo *pFrameInfo);
 

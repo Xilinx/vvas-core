@@ -17,7 +17,8 @@
  */
 
 /**
- * DOC: VVAS Scaler Interfaces for handling HW and SW library.
+ * DOC: VVAS Scaler Interfaces
+ * VVAS Scaler Interfaces for handling HW and SW library.
  */
 
 #ifndef _VVAS_SCALER_INTERFACE_H_
@@ -62,7 +63,7 @@ typedef VvasScalerInstace * (* vvas_scaler_create_fptr) (VvasContext *ctx,
  */
 
 typedef VvasReturnType (* vvas_scaler_channel_add_fptr) (VvasScalerInstace * hndl,
-    VvasScalerRect *src_rect, VvasScalerRect *dst_rect, VvasScalerPpe *ppe);
+    VvasScalerRect *src_rect, VvasScalerRect *dst_rect, VvasScalerPpe *ppe, VvasScalerParam *param);
 
 /**
  *  typedef vvas_scaler_process_frame_fptr - Function pointer to the implementation of @vvas_scaler_process_frame()

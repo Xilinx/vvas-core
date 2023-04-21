@@ -80,7 +80,7 @@ vvas_yolov2::run (void * handle, std::vector < cv::Mat > &images,
     unsigned int cur_objs = 0;
 
     if (results[i].bboxes.size ()) {
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
       int cols = images[i].cols;
       int rows = images[i].rows;
 
@@ -110,8 +110,8 @@ vvas_yolov2::run (void * handle, std::vector < cv::Mat > &images,
           ymax = rows;
         float confidence = box.score;
 
-        VvasBoundingBox bbox;
-        VvasInferPrediction *predict;
+        VvasBoundingBox bbox = { 0 };
+        VvasInferPrediction *predict = NULL;
         VvasInferClassification *c = NULL;
 
         bbox.x = xmin;
@@ -146,7 +146,7 @@ vvas_yolov2::run (void * handle, std::vector < cv::Mat > &images,
           break;
         }
       }
-      if (parent_predict) {
+      if (parent_predict && kpriv->log_level >= LOG_LEVEL_DEBUG) {
         pstr = vvas_inferprediction_to_string (parent_predict);
         LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
             "prediction tree : \n%s", pstr);

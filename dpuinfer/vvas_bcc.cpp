@@ -43,7 +43,7 @@ vvas_bcc::run (void * handle, std::vector < cv::Mat > &images,
     VvasInferPrediction *parent_predict = NULL;
 
     {
-      VvasBoundingBox parent_bbox;
+      VvasBoundingBox parent_bbox = { 0 };
       int cols = images[i].cols;
       int rows = images[i].rows;
 
@@ -58,17 +58,10 @@ vvas_bcc::run (void * handle, std::vector < cv::Mat > &images,
       }
 
       VvasInferPrediction *predict;
-      VvasInferClassification *c = NULL;
 
       predict = vvas_inferprediction_new ();
       predict->count = results[i].count; 
 
-      c = vvas_inferclassification_new ();
-      c->class_id = -1;
-      c->class_prob = 1;
-      c->class_label = strdup ("bcc");
-      c->num_classes = 0;
-      predict->classifications = vvas_list_append (predict->classifications, c);
       /* add class and name in prediction node */
       predict->model_class = (VvasClass) kpriv->modelclass;
       predict->model_name = strdup (kpriv->modelname.c_str ());
@@ -77,11 +70,12 @@ vvas_bcc::run (void * handle, std::vector < cv::Mat > &images,
       LOG_MESSAGE (LOG_LEVEL_INFO, kpriv->log_level,
           "RESULT: %d ", results[i].count);
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-          pstr);
-      free (pstr);
-
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
     }
     predictions[i] = parent_predict;
 

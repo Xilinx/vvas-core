@@ -107,7 +107,7 @@ vvas_segmentation::run (void * handle, std::vector < cv::Mat > &images,
     return false;
   }
   for (auto i = 0u; i < results.size (); i++) {
-    VvasBoundingBox parent_bbox;
+    VvasBoundingBox parent_bbox = { 0 };
     VvasInferPrediction *parent_predict = NULL;
     int cols = results[i].segmentation.cols;
     int rows = results[i].segmentation.rows;
@@ -162,10 +162,12 @@ vvas_segmentation::run (void * handle, std::vector < cv::Mat > &images,
       predict->model_name = strdup (kpriv->modelname.c_str ());
       vvas_inferprediction_append (parent_predict, predict);
 
-      pstr = vvas_inferprediction_to_string (parent_predict);
-      LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level, "prediction tree : \n%s",
-          pstr);
-      free (pstr);
+      if (kpriv->log_level >= LOG_LEVEL_DEBUG) {
+        pstr = vvas_inferprediction_to_string (parent_predict);
+        LOG_MESSAGE (LOG_LEVEL_DEBUG, kpriv->log_level,
+          "prediction tree : \n%s", pstr);
+        free (pstr);
+      }
 
       predictions[i] = parent_predict;
     }

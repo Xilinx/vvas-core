@@ -95,7 +95,7 @@ vvas_memory_alloc (VvasContext *vvas_ctx, VvasAllocationType alloc_type, VvasAll
 error:
   if (priv) {
     if (priv->boh)
-      vvas_xrt_free_bo (priv);
+      vvas_xrt_free_bo (priv->boh);
     if (priv->data)
       free (priv->data);
     free(priv);
@@ -120,7 +120,7 @@ error:
  * @return  On Success returns VvasMemory handle\n
  *                On Failure returns NULL
  * @brief Allocates VvasMemory handle from \p data pointer and \p size
- * @details When application needs to send its data pointer VVAS core APIs, this API is useful to populate data pointer in VvasMemory handle.
+ * @details When application needs to send its data pointer to VVAS core APIs, this API is useful to wrap user provided data pointer into Vvasmemory and get VvasMemory handle.
  */
 VvasMemory*
 vvas_memory_alloc_from_data (VvasContext *vvas_ctx, uint8_t *data, uint64_t size, VvasMemoryDataFreeCB free_cb, void *user_data, VvasReturnType *vret)
@@ -164,7 +164,7 @@ vvas_memory_alloc_from_data (VvasContext *vvas_ctx, uint8_t *data, uint64_t size
  * @param[in] flags - Flags used to map \p vvas_mem
  * @param[out] info - Structure which gets populated after mapping is successful
  * @return  @ref VvasReturnType
- * @brief Maps \p vvas_mem to user space using \p flags. Based on VvasMemory::sync_flags, data will synchronized between host and device.
+ * @brief Maps \p vvas_mem to user space using \p flags. Based on VvasMemory::sync_flags, data will be synchronized between host and device.
  */
 VvasReturnType
 vvas_memory_map (VvasMemory* vvas_mem, VvasDataMapFlags map_flags, VvasMemoryMapInfo *info)
@@ -172,7 +172,7 @@ vvas_memory_map (VvasMemory* vvas_mem, VvasDataMapFlags map_flags, VvasMemoryMap
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv || !info) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return VVAS_RET_INVALID_ARGS;
   }
 
@@ -215,7 +215,7 @@ vvas_memory_unmap (VvasMemory* vvas_mem, VvasMemoryMapInfo *info)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return VVAS_RET_INVALID_ARGS;
   }
 
@@ -239,7 +239,7 @@ vvas_memory_free (VvasMemory* vvas_mem)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -270,7 +270,7 @@ vvas_memory_set_metadata (VvasMemory* vvas_mem, VvasMetadata *meta_data)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv || !meta_data) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -295,7 +295,7 @@ vvas_memory_get_metadata (VvasMemory* vvas_mem, VvasMetadata *meta_data)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv || !meta_data) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid arguments");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid arguments");
     return;
   }
 
@@ -320,12 +320,21 @@ void
 vvas_memory_sync_data (VvasMemory* vvas_mem, VvasDataSyncFlags sync_flag)
 {
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
+  int ret = 0;
 
   if (sync_flag & VVAS_DATA_SYNC_TO_DEVICE) {
-    vvas_xrt_sync_bo (priv->boh, VVAS_BO_SYNC_BO_TO_DEVICE, priv->size, 0);
+    ret = vvas_xrt_sync_bo (priv->boh, VVAS_BO_SYNC_BO_TO_DEVICE, priv->size, 0);
+    if (ret != 0) {
+      LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "failed to sync memory");
+      return;
+    }
     vvas_memory_unset_sync_flag (vvas_mem, VVAS_BO_SYNC_BO_TO_DEVICE);
   } else if (sync_flag & VVAS_DATA_SYNC_FROM_DEVICE) {
-    vvas_xrt_sync_bo (priv->boh, VVAS_BO_SYNC_BO_FROM_DEVICE, priv->size, 0);
+    ret = vvas_xrt_sync_bo (priv->boh, VVAS_BO_SYNC_BO_FROM_DEVICE, priv->size, 0);
+    if (ret != 0) {
+      LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "failed to sync memory");
+      return;
+    }
     vvas_memory_unset_sync_flag (vvas_mem, VVAS_BO_SYNC_BO_FROM_DEVICE);
   } else {
     return;
@@ -373,7 +382,7 @@ vvas_memory_get_paddr (VvasMemory* vvas_mem)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid memory address");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid memory address");
     return (uint64_t)-1;
   }
 
@@ -397,7 +406,7 @@ vvas_memory_get_bo (VvasMemory *vvas_mem)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid memory address");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid memory address");
     return NULL;
   }
 
@@ -416,7 +425,7 @@ vvas_memory_get_device_index (VvasMemory *vvas_mem)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid memory address");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid memory address");
     return -1;
   }
 
@@ -435,7 +444,7 @@ vvas_memory_get_bank_index (VvasMemory *vvas_mem)
   VvasMemoryPrivate* priv = (VvasMemoryPrivate* )vvas_mem;
 
   if (!priv) {
-    LOG_MESSAGE (LOG_LEVEL_ERROR, priv->ctx->log_level, "invalid memory address");
+    LOG_MESSAGE (LOG_LEVEL_ERROR, DEFAULT_VVAS_LOG_LEVEL, "invalid memory address");
     return -1;
   }
 

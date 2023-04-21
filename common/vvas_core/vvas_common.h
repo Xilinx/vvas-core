@@ -16,9 +16,8 @@
  */
 
 /**
- * DOC: Common declarations for VVAS core libraries
- *
- * This file contains common structures, enumerations and method declarations for VVAS core libraries
+ * DOC: VVAS Common APIs
+ * This file contains common structures, enumerations and method declarations for VVAS core libraries.
  */
 
 #ifndef __VVAS_COMMON_H__
@@ -45,7 +44,7 @@
  * @VVAS_RET_EOS: End of stream
  * @VVAS_RET_SEND_AGAIN: Call the API without changing arguments
  * @VVAS_RET_NEED_MOREDATA: Core APIs need more data to complete a specific operation
- * @VVAS_RET_CAPS_CHANGED: Capabilities changed4
+ * @VVAS_RET_CAPS_CHANGED: Capabilities changed
  *
  * Note: Negative number represents error and positive number is not an error
  */
@@ -92,7 +91,7 @@ typedef enum {
 /**
  * enum VvasAllocationType - Enum representing VVAS allocation type
  * @VVAS_ALLOC_TYPE_UNKNOWN: Unknown allocation type
- * @VVAS_ALLOC_TYPE_CMA: Memory will be created by backend drivers (i.e XRT)
+ * @VVAS_ALLOC_TYPE_CMA: Physically contiguous Memory will be allocated by backend drivers (i.e XRT)
  * @VVAS_ALLOC_TYPE_NON_CMA: Memory will be allocated using malloc API
  */
 typedef enum {
@@ -102,27 +101,18 @@ typedef enum {
 } VvasAllocationType;
 
 /**
- * enum VvasAllocationFlags - Enum representing VVAS allocation flags
+ * enum VvasAllocationFlags - Enum representing VVAS allocation flags. Can be extended in future.
  * @VVAS_ALLOC_FLAG_UNKNOWN:  Unknown allocation type
  * @VVAS_ALLOC_FLAG_NONE: To create memory both on FPGA device and host. This is the default option
- * @VVAS_ALLOC_FLAG_DEV_ONLY: To create FPGA device side memory only and no corresponding host(PC) side memory
- * @VVAS_ALLOC_FLAG_HOST_ONLY: To create host side memory only and no device side memory
- * @VVAS_ALLOC_FLAG_P2P: To create memory for peer-to-peer device use
- * @VVAS_ALLOC_FLAG_CACHEABLE: To create cacheable memory and effective on Embedded platforms
  */
-// TODO: Lets remove unsupported flags
 typedef enum {
   VVAS_ALLOC_FLAG_UNKNOWN = -1,
   VVAS_ALLOC_FLAG_NONE = 0,
-  VVAS_ALLOC_FLAG_DEV_ONLY,
-  VVAS_ALLOC_FLAG_HOST_ONLY,
-  VVAS_ALLOC_FLAG_P2P,
-  VVAS_ALLOC_FLAG_CACHEABLE,
 } VvasAllocationFlags;
 
 /**
  * struct VvasAllocationInfo - Structure to store information related memory allocation
- * @mbank_idx: Memory bank index
+ * @mbank_idx: Index of the Memory bank from which memory is allocated
  * @alloc_type: Memory allocation type &enum VvasAllocationType
  * @alloc_flags: Flags used to allocate memory &enum VvasAllocationFlags
  * @map_flags: Flags to indicate current mapping type &enum VvasDataMapFlags
